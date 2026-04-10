@@ -1,60 +1,70 @@
 # 📊 Ticker Comparison Dashboard
 
-Interactive web dashboard to compare multiple stock tickers side-by-side.
+A lightweight, browser-based stock ticker comparison tool with granular intraday data visualization. Compare multiple tickers side-by-side with automatic baseline normalization and smart interval selection.
 
-## Features
+## 🚀 Live Demo
 
-- ✅ Compare unlimited tickers simultaneously
-- ✅ **Granular intervals**: 1-minute, 5-minute, 15-minute, 30-minute, hourly, or daily data
-- ✅ **Auto-interval detection**: Automatically picks optimal granularity based on date range
-- ✅ **Intraday data**: See pre-market and after-hours trading with minute-level data
-- ✅ Interactive charts with zoom/pan
-- ✅ Volume visualization
-- ✅ Percentage change comparison from selected date range
-- ✅ Mobile-first responsive design
-- ✅ PWA installable on phone/desktop
-- ✅ No backend required - runs entirely in browser
+**[View Dashboard →](https://yourusername.github.io/ticker-comparison-dashboard)** *(Replace with your GitHub Pages URL)*
 
-## Quick Start (Local)
+Works on desktop, tablet, and mobile. Install as a PWA for app-like experience.
 
-### Option 1: Direct File Open
-1. Navigate to the folder:
-   ```bash
-   cd ticker_comparison_dashboard
-   ```
+<!-- Screenshot placeholder - uncomment and add screenshot
+![Dashboard Screenshot](screenshot.png)
+-->
 
-2. Open `index.html` in your browser:
-   - **macOS**: `open index.html`
-   - **Windows**: `start index.html`
-   - **Linux**: `xdg-open index.html`
+## ✨ Features
 
-### Option 2: Local Server (Recommended)
-For best experience (avoids CORS issues), run a local server:
+- **Multi-ticker comparison** - Compare unlimited tickers simultaneously
+- **Granular intervals** - 1-minute, 5-minute, 15-minute, 30-minute, hourly, or daily data
+- **Smart auto-detection** - Automatically selects optimal interval based on date range
+- **Extended hours** - Pre-market (4am-9:30am) and after-hours (4pm-8pm) data for intraday intervals
+- **Interactive charts** - Zoom, pan, and unified hover tooltips showing all ticker prices
+- **Volume visualization** - Separate volume subplot with synchronized crosshair
+- **Percentage normalization** - Fair comparison regardless of absolute price differences
+- **Mobile-first design** - Responsive layout optimized for phones and tablets
+- **PWA installable** - Add to home screen for offline-capable app experience
+- **No backend required** - Runs entirely in browser using Yahoo Finance API
+
+## 🏃 Quick Start
+
+### Run Locally
+
+**Recommended:** Use a local server to avoid CORS issues:
 
 ```bash
-# Using Python 3
+# Clone or download this repository
+cd ticker-comparison-dashboard
+
+# Start local server (Python 3)
 python3 -m http.server 8000
 
-# Then visit: http://localhost:8000
-```
-
-Or with Node.js:
-```bash
+# Or use Node.js
 npx http-server -p 8000
+
+# Open in browser
+open http://localhost:8000
 ```
 
-## Usage
+**Alternative:** Open `index.html` directly in your browser (may have CORS limitations).
 
-1. **Add Tickers**: Enter stock symbols (e.g., AAPL, TSLA, MSFT) - press Enter to add another
-2. **Select Date Range**: Choose start and end dates
-3. **Choose Interval** (optional): 
-   - **Auto** (default): Smart selection based on date range
-   - **Manual**: Pick 1m, 5m, 15m, 30m, 1h, or daily
-4. **Update Chart**: Click to fetch data and render (or press Ctrl/Cmd+Enter)
-5. **Zoom/Pan**: Use chart controls to zoom and pan
-6. **Toggle Volume**: Show/hide volume bars
-7. **Change Timeframe**: Adjust date range and update to see different periods
-8. **Install on Phone**: Open on mobile → "Add to Home Screen"
+## 📖 Usage
+
+1. **Add Tickers** - Enter stock symbols (e.g., AAPL, TSLA, MSFT). Press Enter to add another.
+2. **Select Date Range** - Choose start and end dates using the date pickers.
+3. **Choose Interval** (optional):
+   - **Auto** (default) - Smart selection based on date range
+   - **Manual** - Pick 1m, 5m, 15m, 30m, 1h, or daily
+4. **Update Chart** - Click "Update Chart" or press `Ctrl/Cmd+Enter`
+5. **Interact with Chart**:
+   - Hover to view prices and volumes for all tickers at that timestamp
+   - Zoom/pan using chart controls
+   - Toggle volume visibility with checkbox
+6. **Mobile** - Open URL on mobile → Tap "Add to Home Screen" to install as app
+
+### Keyboard Shortcuts
+
+- `Enter` in ticker input → Add new ticker field
+- `Ctrl/Cmd + Enter` → Update chart
 
 ### Interval Guide
 
@@ -82,155 +92,137 @@ When manually selecting intervals, note these maximum date ranges:
 
 **The dashboard automatically disables incompatible intervals** based on your selected date range.
 
-## How It Works
+## 💡 How It Works
 
-### Percentage Comparison
-All tickers are normalized to % change from the start date:
-- First closing price in range = 0%
-- All subsequent prices calculated as % change from that baseline
-- Allows fair comparison regardless of absolute price differences
+### Percentage Normalization
+All tickers are normalized to percentage change from the selected start date, enabling fair comparison regardless of absolute price differences. The first closing price in the range equals 0%, with all subsequent prices calculated relative to that baseline.
 
 ### Smart Interval Selection
-The dashboard automatically selects the most granular interval Yahoo Finance allows:
-- **Short periods** (1 day): 1-minute bars showing pre-market (4am-9:30am ET), regular hours (9:30am-4pm ET), and after-hours (4pm-8pm ET)
-- **Medium periods** (1 week - 2 months): 5-minute to 30-minute intraday data
-- **Long periods** (1+ years): Daily data for long-term trends
+The dashboard automatically selects the most granular interval supported by Yahoo Finance for your date range:
 
-You can override auto-selection and manually choose any interval.
+- **1 day** → 1-minute bars (includes pre-market 4am-9:30am, market hours 9:30am-4pm, after-hours 4pm-8pm ET)
+- **2-7 days** → 5-minute bars
+- **8-30 days** → 15-minute bars
+- **31-60 days** → 30-minute bars
+- **61-365 days** → Hourly bars
+- **365+ days** → Daily bars
 
-### Data Source
-- Uses Yahoo Finance public API
-- No API key required
-- Real-time market data
-- Historical OHLCV data
+Manual interval override is available. Invalid intervals are automatically disabled based on your date range.
 
-## Project Structure
+### Visual Enhancements
+- **Extended hours highlighting** - Pre-market (blue) and after-hours (orange) periods visually distinguished on intraday charts
+- **Gap removal** - Non-trading hours and weekends dynamically hidden for cleaner visualization
+- **Unified tooltips** - Hover anywhere to see all ticker prices and volumes at that timestamp with vertical crosshair
+
+## 📁 Project Structure
 
 ```
-ticker_comparison_dashboard/
+ticker-comparison-dashboard/
 ├── index.html              # Main HTML page
 ├── manifest.json           # PWA configuration
 ├── css/
 │   └── style.css          # Mobile-first responsive styles
 ├── js/
-│   ├── data-fetcher.js    # Yahoo Finance API wrapper
-│   ├── chart-manager.js   # Plotly chart + zoom logic
-│   └── app.js             # Main application logic
-└── README.md              # This file
+│   ├── data-fetcher.js    # Yahoo Finance API integration
+│   ├── chart-manager.js   # Plotly.js chart rendering and interaction
+│   └── app.js             # Application logic and UI management
+└── README.md
 ```
 
-## Deploy to GitHub Pages
+## 🌐 Deployment
 
-### Step 1: Create GitHub Repository
-```bash
-# In the ticker_comparison_dashboard folder
-git init
-git add .
-git commit -m "Initial commit: Ticker comparison dashboard"
-```
+### GitHub Pages
 
-### Step 2: Create Repo on GitHub
-1. Go to https://github.com/new
-2. Name: `ticker-comparison-dashboard`
-3. Public repository
-4. Don't initialize with README (we already have one)
-5. Click "Create repository"
+This repository is configured for GitHub Pages deployment:
 
-### Step 3: Push to GitHub
-```bash
-# Link to your GitHub repo (replace YOUR_USERNAME)
-git remote add origin https://github.com/YOUR_USERNAME/ticker-comparison-dashboard.git
+1. Go to **Settings** → **Pages**
+2. Set **Source** to "Deploy from branch"
+3. Select branch: `main`, folder: `/ (root)`
+4. Click **Save**
 
-# Push code
-git branch -M main
-git push -u origin main
-```
+Your dashboard will be live at: `https://YOUR_USERNAME.github.io/ticker-comparison-dashboard`
 
-### Step 4: Enable GitHub Pages
-1. Go to repo → Settings → Pages
-2. Source: Deploy from branch
-3. Branch: `main` → folder: `/ (root)`
-4. Save
+**Note:** Repository must be public for free GitHub Pages hosting.
 
-### Step 5: Access Your Dashboard
-After ~1 minute, visit:
-```
-https://YOUR_USERNAME.github.io/ticker-comparison-dashboard
-```
+## 📱 Mobile Installation (PWA)
 
-Share this URL with anyone - works on desktop and mobile!
+Install as a Progressive Web App for offline-capable, app-like experience:
 
-## Mobile Installation (PWA)
-
-### iPhone/iPad
+**iOS (Safari):**
 1. Open dashboard URL in Safari
-2. Tap Share button (box with arrow)
-3. Scroll down → "Add to Home Screen"
-4. App installs with icon on home screen
+2. Tap Share button → "Add to Home Screen"
+3. App icon appears on home screen
 
-### Android
+**Android (Chrome):**
 1. Open dashboard URL in Chrome
-2. Tap menu (3 dots)
-3. "Add to Home screen" or "Install app"
-4. App installs
+2. Tap menu (⋮) → "Add to Home screen" or "Install app"
+3. App icon appears in app drawer
 
-## Customization
+## ⚙️ Customization
 
-### Change Default Date Range
-Edit `app.js` line 17-18:
+**Default date range** - Edit `js/app.js` line ~20:
 ```javascript
-startDate.setMonth(startDate.getMonth() - 3);  // Change -3 to your preference
+startDate.setMonth(startDate.getMonth() - 3);  // Default: last 3 months
 ```
 
-### Change Theme Colors
-Edit `css/style.css` lines 9-16:
+**Theme colors** - Edit `css/style.css` CSS variables:
 ```css
 :root {
-    --primary-color: #2563eb;  /* Change to your color */
+    --primary-color: #2563eb;
     --success-color: #10b981;
     --error-color: #ef4444;
-    /* ... */
 }
 ```
 
-### Pre-populate Tickers
-Edit `app.js` `addTickerInput()` to set default values.
+**Pre-populate tickers** - Modify `addTickerInput()` in `js/app.js`
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
-### Chart Not Loading
-- **Issue**: CORS errors in console
-- **Fix**: Use local server (see Quick Start Option 2)
+| Issue | Solution |
+|-------|----------|
+| CORS errors / chart not loading | Use local server instead of opening file directly |
+| Ticker not found | Verify symbol is correct (use Yahoo Finance symbols) |
+| No data returned | Check date range doesn't span only weekends/holidays |
+| Interval disabled | Date range exceeds interval limit (see Interval Limits table) |
 
-### Ticker Not Found
-- **Issue**: "Failed to fetch TICKER"
-- **Fix**: Verify ticker symbol is correct (use Yahoo Finance symbol)
+## 🛠️ Technology Stack
 
-### Date Range Issues
-- **Issue**: No data returned
-- **Fix**: Markets are closed on weekends - adjust date range
+- **Frontend:** Vanilla JavaScript (ES6+), HTML5, CSS3
+- **Charting:** [Plotly.js](https://plotly.com/javascript/)
+- **Data Source:** [Yahoo Finance API](https://finance.yahoo.com)
+- **PWA:** Web App Manifest, Service Worker ready
 
-### Mobile Touch Issues
-- **Issue**: Buttons too small
-- **Fix**: Already optimized with 44px min touch targets
+**No build tools, no dependencies, no backend.** Just clone and run.
 
-## Browser Support
+## 🌍 Browser Support
 
-- ✅ Chrome/Edge (latest)
-- ✅ Firefox (latest)
-- ✅ Safari (iOS 14+, macOS)
-- ✅ Mobile browsers
+- Chrome/Edge (latest)
+- Firefox (latest)
+- Safari (iOS 14+, macOS)
+- Mobile browsers (iOS Safari, Chrome Android)
 
-## License
+## 🤝 Contributing
 
-MIT - Free to use and modify
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
-## Credits
+## 📄 License
 
-- Data: Yahoo Finance
-- Charts: Plotly.js
-- Icons: Emoji
+MIT License - Free to use, modify, and distribute.
+
+See [LICENSE](LICENSE) for details.
+
+## 🙏 Acknowledgments
+
+- Market data provided by [Yahoo Finance](https://finance.yahoo.com)
+- Charts powered by [Plotly.js](https://plotly.com/javascript/)
+- CORS proxy by [corsproxy.io](https://corsproxy.io)
+
+## 📞 Support
+
+- **Issues:** [Report bugs or request features](../../issues)
+- **Discussions:** [Ask questions or share ideas](../../discussions)
+- **Pull Requests:** Contributions welcome!
 
 ---
 
-**Questions?** Open an issue on GitHub or check the code comments.
+**Built with ❤️ for traders and investors**
