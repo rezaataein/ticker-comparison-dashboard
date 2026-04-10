@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="description" content="Compare multiple stock tickers with interactive charts">
+    <meta name="theme-color" content="#2563eb">
+
+    <title>Ticker Comparison Dashboard</title>
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Plotly.js from CDN -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>📊 Ticker Comparison Dashboard</h1>
+            <p>Compare multiple stock tickers with interactive charts. Change date range to adjust timeframe.</p>
+        </header>
+
+        <!-- Messages -->
+        <div id="errorMessage" class="message error-message"></div>
+        <div id="successMessage" class="message success-message"></div>
+
+        <!-- Loader -->
+        <div id="loader" class="loader">
+            <div class="spinner"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <!-- Ticker Inputs -->
+            <div class="control-section">
+                <h3>📈 Tickers</h3>
+                <div id="tickerInputs">
+                    <!-- Ticker inputs will be added here by JavaScript -->
+                </div>
+                <button id="addTickerBtn" class="add-ticker-btn">+ Add Ticker</button>
+            </div>
+
+            <!-- Date Range -->
+            <div class="control-section">
+                <h3>📅 Date Range</h3>
+                <div class="date-inputs">
+                    <div class="date-group">
+                        <label for="startDate">Start Date</label>
+                        <input type="date" id="startDate" required>
+                    </div>
+                    <div class="date-group">
+                        <label for="endDate">End Date</label>
+                        <input type="date" id="endDate" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Options -->
+            <div class="control-section">
+                <h3>⚙️ Options</h3>
+                <div class="options">
+                    <input type="checkbox" id="toggleVolume" checked>
+                    <label for="toggleVolume">Show Volume</label>
+                </div>
+                <div class="options" style="margin-top: 0.75rem;">
+                    <label for="intervalSelect" style="margin-right: 0.5rem;">Interval:</label>
+                    <select id="intervalSelect" class="interval-select">
+                        <option value="auto">Auto (Smart)</option>
+                        <option value="1m">1 Minute</option>
+                        <option value="5m">5 Minutes</option>
+                        <option value="15m">15 Minutes</option>
+                        <option value="30m">30 Minutes</option>
+                        <option value="60m">1 Hour</option>
+                        <option value="1d">Daily</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="control-section">
+                <div class="button-group">
+                    <button id="updateChartBtn" class="btn btn-primary">Update Chart</button>
+                    <button id="clearChartBtn" class="btn btn-secondary">Clear Chart</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-container">
+            <div id="chart"></div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Data provided by Yahoo Finance | Press Enter to add ticker | Ctrl/Cmd+Enter to update chart</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="js/data-fetcher.js"></script>
+    <script src="js/chart-manager.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
