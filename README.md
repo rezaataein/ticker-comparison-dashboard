@@ -4,7 +4,7 @@ A lightweight, browser-based stock ticker comparison tool with granular intraday
 
 ## 🚀 Live Demo
 
-**[View Dashboard →](https://yourusername.github.io/ticker-comparison-dashboard)** *(Replace with your GitHub Pages URL)*
+**[View Dashboard →](https://rezaataein.github.io/ticker-comparison-dashboard/)**
 
 Works on desktop, tablet, and mobile. Install as a PWA for app-like experience.
 
