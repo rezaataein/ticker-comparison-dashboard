@@ -24,6 +24,12 @@ body {
     color: var(--text-color);
     line-height: 1.6;
     padding: 1rem;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 /* Header */
@@ -98,6 +104,8 @@ body {
     border-radius: 0.375rem;
     font-size: 1rem;
     transition: border-color 0.2s;
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 .ticker-input:focus {
@@ -292,13 +300,18 @@ body {
     padding: 0.5rem;
     box-shadow: var(--shadow);
     min-height: 400px;
+    -webkit-tap-highlight-color: transparent;
 }
 
 #chart {
     width: 100%;
     min-height: 350px;
-    touch-action: none;
-    user-select: none;
+    touch-action: pan-y;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#chart * {
+    -webkit-tap-highlight-color: transparent !important;
 }
 
 /* Mobile-specific chart sizing */
