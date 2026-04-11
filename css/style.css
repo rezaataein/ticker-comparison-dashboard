@@ -297,6 +297,8 @@ body {
 #chart {
     width: 100%;
     min-height: 350px;
+    touch-action: none;
+    user-select: none;
 }
 
 /* Mobile-specific chart sizing */
