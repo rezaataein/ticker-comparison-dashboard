@@ -28,7 +28,11 @@ class ChartManager {
                 name: data.ticker,
                 type: 'scatter',
                 mode: 'lines',
-                line: { width: 2 },
+                line: {
+                    width: 2,
+                    shape: 'spline',
+                    smoothing: 1.0
+                },
                 xaxis: 'x',
                 yaxis: 'y',
                 customdata: data.close,
@@ -65,6 +69,7 @@ class ChartManager {
         const layout = {
             title: `Ticker Comparison - ${intervalLabel}`,
             hovermode: 'x unified',
+            dragmode: 'pan',
             xaxis: {
                 title: '',
                 type: 'date',
@@ -76,7 +81,8 @@ class ChartManager {
                 spikesnap: 'cursor',
                 spikecolor: '#999',
                 spikethickness: 1,
-                spikedash: 'solid'
+                spikedash: 'solid',
+                fixedrange: true
             },
             xaxis2: {
                 title: isIntraday ? 'Date & Time (ET)' : 'Date',
@@ -89,27 +95,33 @@ class ChartManager {
                 spikesnap: 'cursor',
                 spikecolor: '#999',
                 spikethickness: 1,
-                spikedash: 'solid'
+                spikedash: 'solid',
+                fixedrange: true
             },
             yaxis: {
                 title: 'Price Change (%)',
                 domain: showVolume ? [0.3, 1] : [0, 1],
                 showgrid: true,
-                zeroline: true
+                zeroline: true,
+                fixedrange: true
             },
             yaxis2: {
                 title: 'Volume',
                 domain: [0, 0.25],
-                showgrid: false
+                showgrid: false,
+                fixedrange: true
             },
             legend: {
                 orientation: 'h',
-                yanchor: 'bottom',
-                y: 1.02,
-                xanchor: 'right',
-                x: 1
+                yanchor: 'top',
+                y: -0.15,
+                xanchor: 'center',
+                x: 0.5,
+                bgcolor: 'rgba(255, 255, 255, 0.9)',
+                bordercolor: '#e2e8f0',
+                borderwidth: 1
             },
-            margin: { t: 100, b: 50, l: 60, r: 60 },
+            margin: { t: 60, b: 100, l: 60, r: 60 },
             autosize: true
         };
 
@@ -145,8 +157,8 @@ class ChartManager {
             layout.shapes = this.getMarketSessionShapes(tickerDataArray);
             layout.annotations = [
                 {
-                    x: 0.01,
-                    y: 0.99,
+                    x: 0.5,
+                    y: 1.05,
                     xref: 'paper',
                     yref: 'paper',
                     text: '🔵 Pre-Market (4-9:30am) | ⚪ Market (9:30am-4pm) | 🟠 After-Hours (4-8pm)',
@@ -154,8 +166,8 @@ class ChartManager {
                     font: { size: 10, color: '#64748b' },
                     bgcolor: 'rgba(255, 255, 255, 0.9)',
                     borderpad: 4,
-                    xanchor: 'left',
-                    yanchor: 'top'
+                    xanchor: 'center',
+                    yanchor: 'bottom'
                 }
             ];
         }
@@ -163,7 +175,10 @@ class ChartManager {
         const config = {
             responsive: true,
             displayModeBar: true,
-            modeBarButtonsToAdd: ['pan2d', 'zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
+            modeBarButtonsToRemove: ['zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d', 'select2d', 'lasso2d'],
+            modeBarButtonsToAdd: ['pan2d'],
+            scrollZoom: false,
+            doubleClick: false
         };
 
         Plotly.newPlot(this.chartElement, traces, layout, config);
