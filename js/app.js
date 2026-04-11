@@ -302,4 +302,9 @@ class TickerDashboard {
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new TickerDashboard();
+
+    // Set last modified date
+    const lastModified = new Date(document.lastModified);
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    document.getElementById('lastModified').textContent = lastModified.toLocaleDateString('en-US', options);
 });
