@@ -69,7 +69,7 @@ class ChartManager {
         const layout = {
             title: `Ticker Comparison - ${intervalLabel}`,
             hovermode: 'x unified',
-            dragmode: 'pan',
+            dragmode: false,
             xaxis: {
                 title: '',
                 type: 'date',
@@ -100,16 +100,19 @@ class ChartManager {
             },
             yaxis: {
                 title: 'Price Change (%)',
-                domain: showVolume ? [0.3, 1] : [0, 1],
+                domain: showVolume ? [0.35, 1] : [0, 1],
                 showgrid: true,
                 zeroline: true,
-                fixedrange: true
+                fixedrange: true,
+                anchor: 'x'
             },
             yaxis2: {
-                title: 'Volume',
-                domain: [0, 0.25],
+                title: showVolume ? 'Volume' : '',
+                domain: showVolume ? [0, 0.28] : [0, 0],
                 showgrid: false,
-                fixedrange: true
+                fixedrange: true,
+                anchor: 'x2',
+                visible: showVolume
             },
             legend: {
                 orientation: 'h',
@@ -175,10 +178,10 @@ class ChartManager {
         const config = {
             responsive: true,
             displayModeBar: true,
-            modeBarButtonsToRemove: ['zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d', 'select2d', 'lasso2d'],
-            modeBarButtonsToAdd: ['pan2d'],
+            modeBarButtonsToRemove: ['zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d', 'select2d', 'lasso2d', 'pan2d'],
             scrollZoom: false,
-            doubleClick: false
+            doubleClick: false,
+            staticPlot: false
         };
 
         Plotly.newPlot(this.chartElement, traces, layout, config);
@@ -311,8 +314,10 @@ class ChartManager {
 
         // Adjust layout to hide/show volume subplot
         const layoutUpdate = {
-            'yaxis.domain': showVolume ? [0.3, 1] : [0, 1],
-            'yaxis2.domain': showVolume ? [0, 0.25] : [0, 0]
+            'yaxis.domain': showVolume ? [0.35, 1] : [0, 1],
+            'yaxis2.domain': showVolume ? [0, 0.28] : [0, 0],
+            'yaxis2.visible': showVolume,
+            'yaxis2.title': showVolume ? 'Volume' : ''
         };
 
         Plotly.relayout(this.chartElement, layoutUpdate);
