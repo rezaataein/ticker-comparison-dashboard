@@ -72,7 +72,8 @@ class ChartManager {
             title: `Ticker Comparison - ${intervalLabel}`,
             hovermode: 'x unified',
             hoversubplots: 'axis',
-            dragmode: false,
+            dragmode: 'pan',
+            hoverdistance: 50,
             xaxis: {
                 title: isIntraday ? 'Date & Time (ET)' : 'Date',
                 type: 'date',
@@ -179,9 +180,6 @@ class ChartManager {
         };
 
         Plotly.newPlot(this.chartElement, traces, layout, config);
-
-        // Add custom touch event handlers for sticky hover (Yahoo Finance style)
-        this.setupStickyHover();
     }
 
     /**
@@ -283,70 +281,16 @@ class ChartManager {
      * Toggle volume visibility
      */
     toggleVolume(showVolume) {
+        console.log('toggleVolume called with:', showVolume);
+        console.log('currentData:', this.currentData);
+        console.log('currentInterval:', this.currentInterval);
+
         // Just re-render - simpler and more reliable
         if (this.currentData && this.currentData.length > 0 && this.currentInterval) {
+            console.log('Re-rendering chart with showVolume:', showVolume);
             this.renderChart(this.currentData, showVolume, this.currentInterval);
+        } else {
+            console.log('Cannot toggle - missing data or interval');
         }
-    }
-
-    /**
-     * Setup sticky hover behavior for touch devices
-     * Allows dragging finger/mouse to see values like Yahoo Finance
-     */
-    setupStickyHover() {
-        // Remove any existing listeners
-        if (this.touchMoveHandler) {
-            this.chartElement.removeEventListener('touchmove', this.touchMoveHandler);
-            this.chartElement.removeEventListener('touchstart', this.touchStartHandler);
-            this.chartElement.removeEventListener('touchend', this.touchEndHandler);
-        }
-
-        // Function to trigger hover at touch position
-        const triggerHoverAtTouch = (e) => {
-            const touch = e.touches[0];
-            const rect = this.chartElement.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
-
-            // Convert pixel coordinates to data coordinates
-            const xaxis = this.chartElement._fullLayout.xaxis;
-            const yaxis = this.chartElement._fullLayout.yaxis;
-
-            if (xaxis && yaxis) {
-                const xval = xaxis.p2d(x);
-                const yval = yaxis.p2d(y);
-
-                // Trigger hover at this position for all traces
-                const hoverData = this.chartElement.data.map((trace, i) => ({
-                    curveNumber: i,
-                    pointNumber: null,
-                    x: xval,
-                    y: yval
-                }));
-
-                Plotly.Fx.hover(this.chartElement, hoverData, 'xy');
-            }
-        };
-
-        this.touchStartHandler = (e) => {
-            // Show hover immediately on touch
-            triggerHoverAtTouch(e);
-        };
-
-        this.touchMoveHandler = (e) => {
-            e.preventDefault();
-            // Update hover as finger moves
-            triggerHoverAtTouch(e);
-        };
-
-        this.touchEndHandler = () => {
-            // Hide hover when finger lifts
-            Plotly.Fx.unhover(this.chartElement);
-        };
-
-        // Add event listeners with passive: false to allow preventDefault
-        this.chartElement.addEventListener('touchstart', this.touchStartHandler, { passive: true });
-        this.chartElement.addEventListener('touchmove', this.touchMoveHandler, { passive: false });
-        this.chartElement.addEventListener('touchend', this.touchEndHandler, { passive: true });
     }
 }

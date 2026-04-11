@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-04-11
+
+### Fixed
+- Fixed mobile hover by changing dragmode from false to 'pan' (allows Plotly's native touch hover)
+- Added hoverdistance: 50 for better touch target sizing on mobile
+- Removed custom touch handlers that were interfering with Plotly's native hover
+- Added debug logging to volume toggle for troubleshooting
+
+### Changed
+- Now uses Plotly's native touch/hover handling instead of custom implementation
+- Chart remains fixed (no zoom/pan) via fixedrange: true on all axes
+
 ## [1.0.4] - 2026-04-11
 
 ### Fixed
