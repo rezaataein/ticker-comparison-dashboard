@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-04-11
+
+### Fixed
+- Completely disabled blue selection highlighting on all clicks
+- Fixed volume toggle to properly re-render chart instead of just hiding
+- Improved hover stickiness by changing hovermode and spike display
+- Removed toolbar completely for cleaner mobile experience
+- Fixed touch-action to allow smooth vertical scrolling while enabling hover
+
+### Changed
+- Re-enabled text selection only for input fields
+- Stored current interval in ChartManager for proper toggle functionality
+- Increased spike thickness for better visibility
+
 ## [1.0.1] - 2026-04-11
 
 ### Fixed

@@ -17,6 +17,8 @@ class ChartManager {
      */
     renderChart(tickerDataArray, showVolume = true, interval = '1d') {
         this.currentData = tickerDataArray;
+        this.currentInterval = interval;
+        this.currentShowVolume = showVolume;
 
         const traces = [];
 
@@ -68,34 +70,28 @@ class ChartManager {
 
         const layout = {
             title: `Ticker Comparison - ${intervalLabel}`,
-            hovermode: 'x unified',
+            hovermode: 'x',
             dragmode: false,
             xaxis: {
-                title: '',
+                title: isIntraday ? 'Date & Time (ET)' : 'Date',
                 type: 'date',
-                showticklabels: false,
                 domain: [0, 1],
                 anchor: 'y',
                 showspikes: true,
-                spikemode: 'across',
+                spikemode: 'across+toaxis+marker',
                 spikesnap: 'cursor',
                 spikecolor: '#999',
-                spikethickness: 1,
+                spikethickness: 2,
                 spikedash: 'solid',
                 fixedrange: true
             },
             xaxis2: {
-                title: isIntraday ? 'Date & Time (ET)' : 'Date',
                 type: 'date',
                 domain: [0, 1],
                 anchor: 'y2',
                 matches: 'x',
-                showspikes: true,
-                spikemode: 'across',
-                spikesnap: 'cursor',
-                spikecolor: '#999',
-                spikethickness: 1,
-                spikedash: 'solid',
+                showticklabels: false,
+                showspikes: false,
                 fixedrange: true
             },
             yaxis: {
@@ -103,16 +99,13 @@ class ChartManager {
                 domain: showVolume ? [0.35, 1] : [0, 1],
                 showgrid: true,
                 zeroline: true,
-                fixedrange: true,
-                anchor: 'x'
+                fixedrange: true
             },
             yaxis2: {
-                title: showVolume ? 'Volume' : '',
-                domain: showVolume ? [0, 0.28] : [0, 0],
+                title: 'Volume',
+                domain: showVolume ? [0, 0.3] : [0, 0],
                 showgrid: false,
-                fixedrange: true,
-                anchor: 'x2',
-                visible: showVolume
+                fixedrange: true
             },
             legend: {
                 orientation: 'h',
@@ -177,11 +170,11 @@ class ChartManager {
 
         const config = {
             responsive: true,
-            displayModeBar: true,
-            modeBarButtonsToRemove: ['zoom2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d', 'select2d', 'lasso2d', 'pan2d'],
+            displayModeBar: false,
             scrollZoom: false,
             doubleClick: false,
-            staticPlot: false
+            displaylogo: false,
+            modeBarButtonsToRemove: ['toImage']
         };
 
         Plotly.newPlot(this.chartElement, traces, layout, config);
@@ -312,14 +305,8 @@ class ChartManager {
 
         Plotly.restyle(this.chartElement, update, volumeIndices);
 
-        // Adjust layout to hide/show volume subplot
-        const layoutUpdate = {
-            'yaxis.domain': showVolume ? [0.35, 1] : [0, 1],
-            'yaxis2.domain': showVolume ? [0, 0.28] : [0, 0],
-            'yaxis2.visible': showVolume,
-            'yaxis2.title': showVolume ? 'Volume' : ''
-        };
-
-        Plotly.relayout(this.chartElement, layoutUpdate);
+        // Re-render the entire chart with new showVolume setting
+        // This is more reliable than trying to toggle visibility
+        this.renderChart(this.currentData, showVolume, this.currentInterval || '1d');
     }
 }
