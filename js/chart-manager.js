@@ -70,7 +70,8 @@ class ChartManager {
 
         const layout = {
             title: `Ticker Comparison - ${intervalLabel}`,
-            hovermode: 'x',
+            hovermode: 'x unified',
+            hoversubplots: 'axis',
             dragmode: false,
             xaxis: {
                 title: isIntraday ? 'Date & Time (ET)' : 'Date',
@@ -178,6 +179,9 @@ class ChartManager {
         };
 
         Plotly.newPlot(this.chartElement, traces, layout, config);
+
+        // Add custom touch event handlers for sticky hover (Yahoo Finance style)
+        this.setupStickyHover();
     }
 
     /**
@@ -288,7 +292,8 @@ class ChartManager {
         const totalTraces = this.chartElement.data.length;
 
         if (totalTraces <= priceTraceCount) {
-            // No volume traces
+            // No volume traces - need to re-render to add them
+            this.renderChart(this.currentData, showVolume, this.currentInterval || '1d');
             return;
         }
 
@@ -298,15 +303,73 @@ class ChartManager {
             volumeIndices.push(i);
         }
 
-        // Update visibility
-        const update = {
-            visible: showVolume
+        // Update trace visibility using Plotly.restyle
+        Plotly.restyle(this.chartElement, {visible: showVolume}, volumeIndices);
+
+        // Update layout domains using Plotly.relayout
+        const layoutUpdate = {
+            'yaxis.domain': showVolume ? [0.35, 1] : [0, 1],
+            'yaxis2.domain': showVolume ? [0, 0.3] : [0, 0]
         };
 
-        Plotly.restyle(this.chartElement, update, volumeIndices);
+        Plotly.relayout(this.chartElement, layoutUpdate);
+    }
 
-        // Re-render the entire chart with new showVolume setting
-        // This is more reliable than trying to toggle visibility
-        this.renderChart(this.currentData, showVolume, this.currentInterval || '1d');
+    /**
+     * Setup sticky hover behavior for touch devices
+     * Allows dragging finger/mouse to see values like Yahoo Finance
+     */
+    setupStickyHover() {
+        // Remove any existing listeners
+        if (this.touchMoveHandler) {
+            this.chartElement.removeEventListener('touchmove', this.touchMoveHandler);
+            this.chartElement.removeEventListener('touchstart', this.touchStartHandler);
+            this.chartElement.removeEventListener('touchend', this.touchEndHandler);
+        }
+
+        let isHovering = false;
+
+        this.touchStartHandler = (e) => {
+            isHovering = true;
+        };
+
+        this.touchMoveHandler = (e) => {
+            if (!isHovering) return;
+
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = this.chartElement.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+
+            // Convert pixel coordinates to data coordinates
+            const xaxis = this.chartElement._fullLayout.xaxis;
+            const yaxis = this.chartElement._fullLayout.yaxis;
+
+            if (xaxis && yaxis) {
+                const xval = xaxis.p2d(x);
+                const yval = yaxis.p2d(y);
+
+                // Trigger hover at this position for all traces
+                const hoverData = this.chartElement.data.map((trace, i) => ({
+                    curveNumber: i,
+                    pointNumber: null,
+                    x: xval,
+                    y: yval
+                }));
+
+                Plotly.Fx.hover(this.chartElement, hoverData, 'xy');
+            }
+        };
+
+        this.touchEndHandler = () => {
+            isHovering = false;
+            Plotly.Fx.unhover(this.chartElement);
+        };
+
+        // Add event listeners with passive: false to allow preventDefault
+        this.chartElement.addEventListener('touchstart', this.touchStartHandler, { passive: true });
+        this.chartElement.addEventListener('touchmove', this.touchMoveHandler, { passive: false });
+        this.chartElement.addEventListener('touchend', this.touchEndHandler, { passive: true });
     }
 }
