@@ -283,36 +283,10 @@ class ChartManager {
      * Toggle volume visibility
      */
     toggleVolume(showVolume) {
-        // Check if chart has been rendered
-        if (!this.chartElement.data || this.chartElement.data.length === 0 || this.currentData.length === 0) {
-            return;
+        // Just re-render - simpler and more reliable
+        if (this.currentData && this.currentData.length > 0 && this.currentInterval) {
+            this.renderChart(this.currentData, showVolume, this.currentInterval);
         }
-
-        const priceTraceCount = this.currentData.length;
-        const totalTraces = this.chartElement.data.length;
-
-        if (totalTraces <= priceTraceCount) {
-            // No volume traces - need to re-render to add them
-            this.renderChart(this.currentData, showVolume, this.currentInterval || '1d');
-            return;
-        }
-
-        // Volume traces start after price traces
-        const volumeIndices = [];
-        for (let i = priceTraceCount; i < totalTraces; i++) {
-            volumeIndices.push(i);
-        }
-
-        // Update trace visibility using Plotly.restyle
-        Plotly.restyle(this.chartElement, {visible: showVolume}, volumeIndices);
-
-        // Update layout domains using Plotly.relayout
-        const layoutUpdate = {
-            'yaxis.domain': showVolume ? [0.35, 1] : [0, 1],
-            'yaxis2.domain': showVolume ? [0, 0.3] : [0, 0]
-        };
-
-        Plotly.relayout(this.chartElement, layoutUpdate);
     }
 
     /**
@@ -327,16 +301,8 @@ class ChartManager {
             this.chartElement.removeEventListener('touchend', this.touchEndHandler);
         }
 
-        let isHovering = false;
-
-        this.touchStartHandler = (e) => {
-            isHovering = true;
-        };
-
-        this.touchMoveHandler = (e) => {
-            if (!isHovering) return;
-
-            e.preventDefault();
+        // Function to trigger hover at touch position
+        const triggerHoverAtTouch = (e) => {
             const touch = e.touches[0];
             const rect = this.chartElement.getBoundingClientRect();
             const x = touch.clientX - rect.left;
@@ -362,8 +328,19 @@ class ChartManager {
             }
         };
 
+        this.touchStartHandler = (e) => {
+            // Show hover immediately on touch
+            triggerHoverAtTouch(e);
+        };
+
+        this.touchMoveHandler = (e) => {
+            e.preventDefault();
+            // Update hover as finger moves
+            triggerHoverAtTouch(e);
+        };
+
         this.touchEndHandler = () => {
-            isHovering = false;
+            // Hide hover when finger lifts
             Plotly.Fx.unhover(this.chartElement);
         };
 
