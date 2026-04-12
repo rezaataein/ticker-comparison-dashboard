@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2026-04-11
+
+### Fixed
+- Volume hover now works - enabled spikes on xaxis2
+- Sticky hover implemented using hybrid approach: touch events trigger synthetic mousemove events
+- Hover stays visible while dragging finger (Yahoo Finance style)
+- Removed debug console logging
+
+### Changed
+- Touch events now dispatch synthetic mousemove to trigger Plotly's native hover system
+- Hover persists after lifting finger (truly sticky)
+
 ## [1.0.5] - 2026-04-11
 
 ### Fixed
