@@ -166,19 +166,6 @@ class DataFetcher {
             return ((c - firstClose) / firstClose) * 100;
         });
 
-        // Debug: Check for null values
-        const nullCount = close.filter(c => c === null).length;
-        if (nullCount > 0) {
-            console.warn(`${ticker}: ${nullCount} null close prices out of ${close.length} data points`);
-
-            // Log date ranges with nulls
-            close.forEach((c, i) => {
-                if (c === null) {
-                    console.log(`  ${ticker} null at index ${i}, date: ${dates[i].toISOString()}`);
-                }
-            });
-        }
-
         return {
             ticker,
             dates,

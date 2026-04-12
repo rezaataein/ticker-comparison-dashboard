@@ -199,17 +199,13 @@ class ChartManager {
                 },
             });
 
-            // Convert data to TradingView format
-            const priceData = data.dates.map((date, i) => ({
-                time: Math.floor(date.getTime() / 1000), // Unix timestamp in seconds
-                value: data.percentChange[i],
-            }));
-
-            // Debug: Check for null values in chart data
-            const nullValues = priceData.filter(d => d.value === null).length;
-            if (nullValues > 0) {
-                console.warn(`${data.ticker}: ${nullValues} null values in priceData for chart`);
-            }
+            // Convert data to TradingView format, filtering out null/invalid data
+            const priceData = data.dates
+                .map((date, i) => ({
+                    time: Math.floor(date.getTime() / 1000),
+                    value: data.percentChange[i],
+                }))
+                .filter(item => item.value != null && !isNaN(item.value));
 
             lineSeries.setData(priceData);
             this.priceSeries.push({
@@ -229,11 +225,14 @@ class ChartManager {
                     priceScaleId: '',
                 });
 
-                const volumeData = data.dates.map((date, i) => ({
-                    time: Math.floor(date.getTime() / 1000),
-                    value: data.volume[i],
-                    color: color + '80', // 50% opacity
-                }));
+                // Filter volume data the same way as price data to maintain alignment
+                const volumeData = data.dates
+                    .map((date, i) => ({
+                        time: Math.floor(date.getTime() / 1000),
+                        value: data.volume[i],
+                        color: color + '80', // 50% opacity
+                    }))
+                    .filter(item => item.value != null && !isNaN(item.value));
 
                 volumeSeries.setData(volumeData);
                 this.volumeSeries.push({ series: volumeSeries, ticker: data.ticker, color: color });
@@ -290,35 +289,11 @@ class ChartManager {
         const percentMap = {};
 
         tickerDataArray.forEach(data => {
-            console.log(`=== Loading ${data.ticker}: ${data.dates.length} data points ===`);
-
-            // Log first and last dates
-            if (data.dates.length > 0) {
-                console.log(`  First date: ${data.dates[0].toISOString()}`);
-                console.log(`  Last date: ${data.dates[data.dates.length - 1].toISOString()}`);
-            }
-
-            // Count nulls
-            let nullCloses = 0;
-            let nullPercents = 0;
-            let zeroPercents = 0;
-
             data.dates.forEach((date, i) => {
                 const time = Math.floor(date.getTime() / 1000);
                 const closePrice = data.close[i];
                 const volume = data.volume[i];
                 const percentChange = data.percentChange[i];
-
-                // Count issues
-                if (closePrice == null || isNaN(closePrice)) nullCloses++;
-                if (percentChange == null || isNaN(percentChange)) nullPercents++;
-                if (percentChange === 0) zeroPercents++;
-
-                // Log ALL data points with issues
-                if (closePrice == null || percentChange == null || percentChange === 0) {
-                    const dateStr = date.toISOString().split('T')[0];
-                    console.log(`  ${data.ticker} ${dateStr}: close=${closePrice}, percent=${percentChange}, volume=${volume}`);
-                }
 
                 if (!priceMap[time]) {
                     priceMap[time] = {};
@@ -326,14 +301,10 @@ class ChartManager {
                     percentMap[time] = {};
                 }
 
-                // Store ALL values (including nulls) - let's see what we have
                 priceMap[time][data.ticker] = closePrice;
                 volumeMap[time][data.ticker] = volume;
                 percentMap[time][data.ticker] = percentChange;
             });
-
-            console.log(`  Nulls: ${nullCloses} close prices, ${nullPercents} percentChanges`);
-            console.log(`  Zero percents: ${zeroPercents}`);
         });
 
         // Subscribe to crosshair movement
@@ -352,16 +323,6 @@ class ChartManager {
                 return;
             }
 
-            // Debug logging for hover (only log if there's an issue)
-            const hoverDate = new Date(param.time * 1000);
-            const hasIssue = Object.values(percentMap[param.time] || {}).some(p => p == null || p === 0);
-
-            if (hasIssue) {
-                console.log('=== HOVER ISSUE ===');
-                console.log('Date:', hoverDate.toISOString().split('T')[0]);
-                console.log('Data:', priceMap[param.time], percentMap[param.time]);
-            }
-
             // Update legend with current values
             this.priceSeries.forEach(({ series, ticker }) => {
                 const legendItem = document.getElementById(`legend-${ticker}`);
@@ -373,14 +334,11 @@ class ChartManager {
                 const actualPrice = priceMap[param.time]?.[ticker];
                 const percentChange = percentMap[param.time]?.[ticker];
 
-                console.log(`${ticker}: price=${actualPrice}, percent=${percentChange}`);
-
                 if (actualPrice != null && !isNaN(actualPrice) && percentChange != null && !isNaN(percentChange)) {
                     valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${percentChange.toFixed(2)}%)`;
                 } else if (actualPrice != null && !isNaN(actualPrice)) {
                     valuesSpan.textContent = ` $${actualPrice.toFixed(2)}`;
                 } else {
-                    console.warn(`${ticker}: NO DATA - actualPrice=${actualPrice}, percentChange=${percentChange}`);
                     valuesSpan.textContent = '';
                 }
             });
