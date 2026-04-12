@@ -93,7 +93,12 @@ class ChartManager {
                 anchor: 'y2',
                 matches: 'x',
                 showticklabels: false,
-                showspikes: false,
+                showspikes: true,
+                spikemode: 'across+toaxis+marker',
+                spikesnap: 'cursor',
+                spikecolor: '#999',
+                spikethickness: 2,
+                spikedash: 'solid',
                 fixedrange: true
             },
             yaxis: {
@@ -180,6 +185,9 @@ class ChartManager {
         };
 
         Plotly.newPlot(this.chartElement, traces, layout, config);
+
+        // Setup sticky hover for mobile
+        this.setupStickyHover();
     }
 
     /**
@@ -281,16 +289,82 @@ class ChartManager {
      * Toggle volume visibility
      */
     toggleVolume(showVolume) {
-        console.log('toggleVolume called with:', showVolume);
-        console.log('currentData:', this.currentData);
-        console.log('currentInterval:', this.currentInterval);
-
         // Just re-render - simpler and more reliable
         if (this.currentData && this.currentData.length > 0 && this.currentInterval) {
-            console.log('Re-rendering chart with showVolume:', showVolume);
             this.renderChart(this.currentData, showVolume, this.currentInterval);
-        } else {
-            console.log('Cannot toggle - missing data or interval');
         }
+    }
+
+    /**
+     * Setup sticky hover for mobile (drag finger to see values)
+     * Uses hybrid approach: listen to touch events and simulate hover
+     */
+    setupStickyHover() {
+        const plotDiv = this.chartElement;
+        let isDragging = false;
+
+        // Remove any existing listeners
+        if (this._touchHandlers) {
+            plotDiv.removeEventListener('touchstart', this._touchHandlers.start);
+            plotDiv.removeEventListener('touchmove', this._touchHandlers.move);
+            plotDiv.removeEventListener('touchend', this._touchHandlers.end);
+        }
+
+        const handleTouchStart = (e) => {
+            isDragging = true;
+            // Trigger initial hover at touch point
+            handleTouchMove(e);
+        };
+
+        const handleTouchMove = (e) => {
+            if (!isDragging) return;
+
+            // Don't prevent default - let page scroll vertically
+            // Only prevent horizontal scrolling
+            const touch = e.touches[0];
+            const plotRect = plotDiv.getBoundingClientRect();
+
+            // Check if touch is within plot area
+            if (touch.clientX < plotRect.left || touch.clientX > plotRect.right) {
+                return;
+            }
+
+            // Calculate position relative to plot
+            const xPos = touch.clientX - plotRect.left;
+            const yPos = touch.clientY - plotRect.top;
+
+            // Find the plot layer (where hover happens)
+            const plotArea = plotDiv.querySelector('.nsewdrag');
+            if (!plotArea) return;
+
+            // Create a synthetic mousemove event to trigger Plotly's hover
+            const mouseEvent = new MouseEvent('mousemove', {
+                view: window,
+                bubbles: true,
+                cancelable: true,
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+
+            plotArea.dispatchEvent(mouseEvent);
+        };
+
+        const handleTouchEnd = () => {
+            isDragging = false;
+            // Keep hover visible after touch ends (sticky behavior)
+            // Don't call Plotly.Fx.unhover - let it stay
+        };
+
+        // Attach event listeners
+        plotDiv.addEventListener('touchstart', handleTouchStart, { passive: true });
+        plotDiv.addEventListener('touchmove', handleTouchMove, { passive: true });
+        plotDiv.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+        // Store handlers for cleanup
+        this._touchHandlers = {
+            start: handleTouchStart,
+            move: handleTouchMove,
+            end: handleTouchEnd
+        };
     }
 }
