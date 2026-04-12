@@ -290,7 +290,18 @@ class ChartManager {
         const percentMap = {};
 
         tickerDataArray.forEach(data => {
-            console.log(`Loading ${data.ticker}: ${data.dates.length} data points`);
+            console.log(`=== Loading ${data.ticker}: ${data.dates.length} data points ===`);
+
+            // Log first and last dates
+            if (data.dates.length > 0) {
+                console.log(`  First date: ${data.dates[0].toISOString()}`);
+                console.log(`  Last date: ${data.dates[data.dates.length - 1].toISOString()}`);
+            }
+
+            // Count nulls
+            let nullCloses = 0;
+            let nullPercents = 0;
+            let zeroPercents = 0;
 
             data.dates.forEach((date, i) => {
                 const time = Math.floor(date.getTime() / 1000);
@@ -298,10 +309,15 @@ class ChartManager {
                 const volume = data.volume[i];
                 const percentChange = data.percentChange[i];
 
-                // Debug: Log data for Jan 30 - Feb 2, 2025
-                const dateStr = date.toISOString().split('T')[0];
-                if (dateStr >= '2025-01-30' && dateStr <= '2025-02-02') {
-                    console.log(`  ${data.ticker} ${dateStr}: close=${closePrice}, volume=${volume}, percent=${percentChange}`);
+                // Count issues
+                if (closePrice == null || isNaN(closePrice)) nullCloses++;
+                if (percentChange == null || isNaN(percentChange)) nullPercents++;
+                if (percentChange === 0) zeroPercents++;
+
+                // Log ALL data points with issues
+                if (closePrice == null || percentChange == null || percentChange === 0) {
+                    const dateStr = date.toISOString().split('T')[0];
+                    console.log(`  ${data.ticker} ${dateStr}: close=${closePrice}, percent=${percentChange}, volume=${volume}`);
                 }
 
                 if (!priceMap[time]) {
@@ -310,17 +326,14 @@ class ChartManager {
                     percentMap[time] = {};
                 }
 
-                // Only store valid values (not null/undefined/NaN)
-                if (closePrice != null && !isNaN(closePrice)) {
-                    priceMap[time][data.ticker] = closePrice;
-                }
-                if (volume != null && !isNaN(volume)) {
-                    volumeMap[time][data.ticker] = volume;
-                }
-                if (percentChange != null && !isNaN(percentChange)) {
-                    percentMap[time][data.ticker] = percentChange;
-                }
+                // Store ALL values (including nulls) - let's see what we have
+                priceMap[time][data.ticker] = closePrice;
+                volumeMap[time][data.ticker] = volume;
+                percentMap[time][data.ticker] = percentChange;
             });
+
+            console.log(`  Nulls: ${nullCloses} close prices, ${nullPercents} percentChanges`);
+            console.log(`  Zero percents: ${zeroPercents}`);
         });
 
         // Subscribe to crosshair movement
@@ -339,12 +352,15 @@ class ChartManager {
                 return;
             }
 
-            // Debug logging for hover
+            // Debug logging for hover (only log if there's an issue)
             const hoverDate = new Date(param.time * 1000);
-            console.log('=== HOVER DEBUG ===');
-            console.log('Time:', param.time, 'Date:', hoverDate.toISOString());
-            console.log('priceMap[time]:', priceMap[param.time]);
-            console.log('percentMap[time]:', percentMap[param.time]);
+            const hasIssue = Object.values(percentMap[param.time] || {}).some(p => p == null || p === 0);
+
+            if (hasIssue) {
+                console.log('=== HOVER ISSUE ===');
+                console.log('Date:', hoverDate.toISOString().split('T')[0]);
+                console.log('Data:', priceMap[param.time], percentMap[param.time]);
+            }
 
             // Update legend with current values
             this.priceSeries.forEach(({ series, ticker }) => {
