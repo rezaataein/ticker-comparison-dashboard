@@ -290,11 +290,19 @@ class ChartManager {
         const percentMap = {};
 
         tickerDataArray.forEach(data => {
+            console.log(`Loading ${data.ticker}: ${data.dates.length} data points`);
+
             data.dates.forEach((date, i) => {
                 const time = Math.floor(date.getTime() / 1000);
                 const closePrice = data.close[i];
                 const volume = data.volume[i];
                 const percentChange = data.percentChange[i];
+
+                // Debug: Log data for Jan 30 - Feb 2, 2025
+                const dateStr = date.toISOString().split('T')[0];
+                if (dateStr >= '2025-01-30' && dateStr <= '2025-02-02') {
+                    console.log(`  ${data.ticker} ${dateStr}: close=${closePrice}, volume=${volume}, percent=${percentChange}`);
+                }
 
                 if (!priceMap[time]) {
                     priceMap[time] = {};
@@ -331,6 +339,13 @@ class ChartManager {
                 return;
             }
 
+            // Debug logging for hover
+            const hoverDate = new Date(param.time * 1000);
+            console.log('=== HOVER DEBUG ===');
+            console.log('Time:', param.time, 'Date:', hoverDate.toISOString());
+            console.log('priceMap[time]:', priceMap[param.time]);
+            console.log('percentMap[time]:', percentMap[param.time]);
+
             // Update legend with current values
             this.priceSeries.forEach(({ series, ticker }) => {
                 const legendItem = document.getElementById(`legend-${ticker}`);
@@ -342,11 +357,14 @@ class ChartManager {
                 const actualPrice = priceMap[param.time]?.[ticker];
                 const percentChange = percentMap[param.time]?.[ticker];
 
+                console.log(`${ticker}: price=${actualPrice}, percent=${percentChange}`);
+
                 if (actualPrice != null && !isNaN(actualPrice) && percentChange != null && !isNaN(percentChange)) {
                     valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${percentChange.toFixed(2)}%)`;
                 } else if (actualPrice != null && !isNaN(actualPrice)) {
                     valuesSpan.textContent = ` $${actualPrice.toFixed(2)}`;
                 } else {
+                    console.warn(`${ticker}: NO DATA - actualPrice=${actualPrice}, percentChange=${percentChange}`);
                     valuesSpan.textContent = '';
                 }
             });
