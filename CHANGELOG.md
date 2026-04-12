@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2026-04-11
+
+### Fixed
+- **CRITICAL**: Fixed data storage bug where currentData was cleared immediately after being set
+- Volume toggle now works - data is preserved for re-rendering
+- Legend tooltip now shows prices and percentages correctly
+- Moved data assignment to AFTER clear() instead of before
+
+### Technical
+- Bug was caused by setting this.currentData before calling this.clear()
+- clear() was resetting currentData to empty array
+- Now clears first, then sets data
+
 ## [1.1.2] - 2026-04-11
 
 ### Added
