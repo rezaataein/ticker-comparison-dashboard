@@ -272,10 +272,15 @@ class ChartManager {
         tickerDataArray.forEach(data => {
             data.dates.forEach((date, i) => {
                 const time = Math.floor(date.getTime() / 1000);
-                if (!priceMap[time]) {
-                    priceMap[time] = {};
+                const closePrice = data.close[i];
+
+                // Only store valid prices (not null/undefined/NaN)
+                if (closePrice != null && !isNaN(closePrice)) {
+                    if (!priceMap[time]) {
+                        priceMap[time] = {};
+                    }
+                    priceMap[time][data.ticker] = closePrice;
                 }
-                priceMap[time][data.ticker] = data.close[i];
             });
         });
 
@@ -300,7 +305,7 @@ class ChartManager {
                 const legendItem = document.getElementById(`legend-${ticker}`);
                 const actualPrice = priceMap[param.time]?.[ticker];
 
-                if (legendItem && actualPrice != null) { // Check for both null and undefined
+                if (legendItem && actualPrice != null && !isNaN(actualPrice)) {
                     const valuesSpan = legendItem.querySelector('.legend-values');
 
                     if (valuesSpan) {
@@ -308,7 +313,7 @@ class ChartManager {
                         const seriesData = param.seriesData?.get(series);
                         const percentChange = seriesData?.value;
 
-                        if (percentChange != null) { // Check for both null and undefined
+                        if (percentChange != null && !isNaN(percentChange)) {
                             valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${percentChange.toFixed(2)}%)`;
                         } else {
                             valuesSpan.textContent = ` $${actualPrice.toFixed(2)}`;
@@ -317,6 +322,48 @@ class ChartManager {
                 }
             });
         });
+
+        // Also subscribe to volume chart crosshair if it exists
+        if (this.volumeChart) {
+            this.volumeChart.subscribeCrosshairMove((param) => {
+                if (!param || !param.time) {
+                    // Reset legend to just show ticker names
+                    this.priceSeries.forEach(({ ticker }) => {
+                        const legendItem = document.getElementById(`legend-${ticker}`);
+                        if (legendItem) {
+                            const valuesSpan = legendItem.querySelector('.legend-values');
+                            if (valuesSpan) {
+                                valuesSpan.textContent = '';
+                            }
+                        }
+                    });
+                    return;
+                }
+
+                // Update legend with current values based on volume chart time
+                this.priceSeries.forEach(({ series, ticker }) => {
+                    const legendItem = document.getElementById(`legend-${ticker}`);
+                    const actualPrice = priceMap[param.time]?.[ticker];
+
+                    if (legendItem && actualPrice != null && !isNaN(actualPrice)) {
+                        const valuesSpan = legendItem.querySelector('.legend-values');
+
+                        if (valuesSpan) {
+                            // Get the percentage change from the price chart data at this time
+                            const priceSeriesData = series.data();
+                            const dataPoint = priceSeriesData.find(d => d.time === param.time);
+                            const percentChange = dataPoint?.value;
+
+                            if (percentChange != null && !isNaN(percentChange)) {
+                                valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${percentChange.toFixed(2)}%)`;
+                            } else {
+                                valuesSpan.textContent = ` $${actualPrice.toFixed(2)}`;
+                            }
+                        }
+                    }
+                });
+            });
+        }
     }
 
     /**
