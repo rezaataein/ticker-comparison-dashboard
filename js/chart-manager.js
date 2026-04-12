@@ -134,8 +134,8 @@ class ChartManager {
                 handleScale: false,
             });
 
-            // Sync crosshair between charts
-            this.syncCharts();
+            // Note: Crosshair sync between charts can be added later if needed
+            // this.syncCharts();
         }
 
         // Color palette for different tickers
@@ -153,7 +153,7 @@ class ChartManager {
             const color = colors[index % colors.length];
 
             // Add price series (line)
-            const lineSeries = this.chart.addLineSeries({
+            const lineSeries = this.chart.addSeries(LightweightCharts.LineSeries, {
                 color: color,
                 lineWidth: 2,
                 title: data.ticker,
@@ -174,7 +174,7 @@ class ChartManager {
 
             // Add volume series if needed
             if (showVolume && this.volumeChart) {
-                const volumeSeries = this.volumeChart.addHistogramSeries({
+                const volumeSeries = this.volumeChart.addSeries(LightweightCharts.HistogramSeries, {
                     color: color,
                     priceFormat: {
                         type: 'volume',
@@ -212,18 +212,18 @@ class ChartManager {
     syncCharts() {
         if (!this.chart || !this.volumeChart) return;
 
-        const syncCrosshair = (fromChart, toChart) => {
-            fromChart.subscribeCrosshairMove((param) => {
-                if (!param || !param.time) {
-                    toChart.clearCrosshairPosition();
-                    return;
-                }
-                toChart.setCrosshairPosition(0, param.time, toChart.series()[0]);
+        // Sync crosshair between charts
+        this.chart.subscribeCrosshairMove((param) => {
+            this.volumeChart.timeScale().applyOptions({
+                rightOffset: this.chart.timeScale().scrollPosition()
             });
-        };
+        });
 
-        syncCrosshair(this.chart, this.volumeChart);
-        syncCrosshair(this.volumeChart, this.chart);
+        this.volumeChart.subscribeCrosshairMove((param) => {
+            this.chart.timeScale().applyOptions({
+                rightOffset: this.volumeChart.timeScale().scrollPosition()
+            });
+        });
     }
 
     /**
