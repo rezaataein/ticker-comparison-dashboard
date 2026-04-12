@@ -90,25 +90,19 @@ class ChartManager {
                 fixRightEdge: true,
                 tickMarkFormatter: (time) => {
                     const date = new Date(time * 1000);
-                    console.log('tickMarkFormatter called - time:', time, 'date:', date, 'isIntraday:', isIntraday);
-
                     if (isIntraday) {
                         // For intraday: show time (HH:MM)
-                        const formatted = date.toLocaleTimeString('en-US', {
+                        return date.toLocaleTimeString('en-US', {
                             hour: 'numeric',
                             minute: '2-digit',
                             hour12: false
                         });
-                        console.log('  → Formatted as intraday:', formatted);
-                        return formatted;
                     } else {
                         // For daily: show date (MMM DD)
-                        const formatted = date.toLocaleDateString('en-US', {
+                        return date.toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric'
                         });
-                        console.log('  → Formatted as daily:', formatted);
-                        return formatted;
                     }
                 },
             },
@@ -157,25 +151,19 @@ class ChartManager {
                     fixRightEdge: true,
                     tickMarkFormatter: (time) => {
                         const date = new Date(time * 1000);
-                        console.log('VOLUME tickMarkFormatter - time:', time, 'date:', date, 'isIntraday:', isIntraday);
-
                         if (isIntraday) {
                             // For intraday: show time (HH:MM)
-                            const formatted = date.toLocaleTimeString('en-US', {
+                            return date.toLocaleTimeString('en-US', {
                                 hour: 'numeric',
                                 minute: '2-digit',
                                 hour12: false
                             });
-                            console.log('  → VOLUME formatted as intraday:', formatted);
-                            return formatted;
                         } else {
                             // For daily: show date (MMM DD)
-                            const formatted = date.toLocaleDateString('en-US', {
+                            return date.toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric'
                             });
-                            console.log('  → VOLUME formatted as daily:', formatted);
-                            return formatted;
                         }
                     },
                 },
@@ -263,16 +251,14 @@ class ChartManager {
             }
         });
 
-        // Fit content for price chart first
+        // Fit content for both charts first
         this.chart.timeScale().fitContent();
-
-        // Then explicitly set volume chart to match price chart range
         if (this.volumeChart) {
-            const priceRange = this.chart.timeScale().getVisibleLogicalRange();
-            console.log('Price chart visible range:', priceRange);
-            this.volumeChart.timeScale().setVisibleLogicalRange(priceRange);
+            this.volumeChart.timeScale().fitContent();
+        }
 
-            // THEN setup ongoing sync
+        // THEN sync time scales (after fitContent)
+        if (this.volumeChart) {
             this.syncTimeScales();
         }
 
@@ -342,28 +328,10 @@ class ChartManager {
         if (!this.chart) return;
 
         // Create maps for quick lookup of prices and volumes by time
-        // CRITICAL: Store ALL timestamps to ensure alignment
-        const allTimestamps = new Set();
-        tickerDataArray.forEach(data => {
-            data.dates.forEach(date => {
-                allTimestamps.add(Math.floor(date.getTime() / 1000));
-            });
-        });
-
-        console.log('Total unique timestamps:', allTimestamps.size);
-
         const priceMap = {};
         const volumeMap = {};
         const percentMap = {};
 
-        // Initialize maps with ALL timestamps
-        allTimestamps.forEach(time => {
-            priceMap[time] = {};
-            volumeMap[time] = {};
-            percentMap[time] = {};
-        });
-
-        // Fill in data for each ticker
         tickerDataArray.forEach(data => {
             data.dates.forEach((date, i) => {
                 const time = Math.floor(date.getTime() / 1000);
@@ -371,7 +339,13 @@ class ChartManager {
                 const volume = data.volume[i];
                 const percentChange = data.percentChange[i];
 
-                // Store valid values
+                if (!priceMap[time]) {
+                    priceMap[time] = {};
+                    volumeMap[time] = {};
+                    percentMap[time] = {};
+                }
+
+                // Only store valid values (not null/undefined/NaN)
                 if (closePrice != null && !isNaN(closePrice)) {
                     priceMap[time][data.ticker] = closePrice;
                 }
@@ -383,9 +357,6 @@ class ChartManager {
                 }
             });
         });
-
-        console.log('Sample priceMap keys:', Object.keys(priceMap).slice(0, 5));
-        console.log('Sample priceMap values:', Object.values(priceMap).slice(0, 2));
 
         // Subscribe to crosshair movement
         this.chart.subscribeCrosshairMove((param) => {
@@ -403,8 +374,6 @@ class ChartManager {
                 return;
             }
 
-            console.log('Crosshair time:', param.time, 'Date:', new Date(param.time * 1000));
-
             // Update legend with current values
             this.priceSeries.forEach(({ series, ticker }) => {
                 const legendItem = document.getElementById(`legend-${ticker}`);
@@ -416,14 +385,11 @@ class ChartManager {
                 const actualPrice = priceMap[param.time]?.[ticker];
                 const percentChange = percentMap[param.time]?.[ticker];
 
-                console.log(`${ticker}: price=${actualPrice}, percent=${percentChange}, time=${param.time}`);
-
                 if (actualPrice != null && !isNaN(actualPrice) && percentChange != null && !isNaN(percentChange)) {
                     valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${percentChange.toFixed(2)}%)`;
                 } else if (actualPrice != null && !isNaN(actualPrice)) {
                     valuesSpan.textContent = ` $${actualPrice.toFixed(2)}`;
                 } else {
-                    console.warn(`Missing data for ${ticker} at time ${param.time}`);
                     valuesSpan.textContent = '';
                 }
             });
