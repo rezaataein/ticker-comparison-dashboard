@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-11
+
+### Changed
+- **MAJOR**: Switched from Plotly.js to TradingView Lightweight Charts
+- Native mobile touch support with crosshair - works out of the box
+- Sticky hover now works perfectly on mobile (drag finger to see values)
+- Volume hover works automatically with synced crosshair
+- Cleaner, more professional chart appearance
+- Better performance on mobile devices
+
+### Fixed
+- Mobile sticky hover - no longer requires workarounds
+- Volume crosshair now synced with price chart
+- Touch interactions work immediately on contact (not on release)
+- All mobile touch issues resolved with purpose-built financial chart library
+
+### Technical
+- Replaced Plotly.js with TradingView Lightweight Charts (purpose-built for financial data)
+- Charts now sync crosshair movement between price and volume panes
+- Simplified codebase - removed all custom touch event handlers
+- Better suited for mobile-first financial charting
+
 ## [1.0.6] - 2026-04-11
 
 ### Fixed

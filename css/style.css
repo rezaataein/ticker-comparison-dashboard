@@ -297,7 +297,7 @@ body {
 .chart-container {
     background: var(--card-bg);
     border-radius: 0.5rem;
-    padding: 0.5rem;
+    padding: 1rem;
     box-shadow: var(--shadow);
     min-height: 400px;
     -webkit-tap-highlight-color: transparent;
@@ -305,13 +305,52 @@ body {
 
 #chart {
     width: 100%;
-    min-height: 350px;
-    touch-action: pan-y;
     -webkit-tap-highlight-color: transparent;
 }
 
-#chart * {
-    -webkit-tap-highlight-color: transparent !important;
+.chart-header {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.chart-header h3 {
+    font-size: 1rem;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.price-chart-container,
+.volume-chart-container {
+    width: 100%;
+    position: relative;
+    margin-bottom: 0.5rem;
+}
+
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.legend-color {
+    width: 16px;
+    height: 3px;
+    border-radius: 2px;
+}
+
+.legend-ticker {
+    font-weight: 600;
+    color: var(--text-color);
 }
 
 /* Mobile-specific chart sizing */
