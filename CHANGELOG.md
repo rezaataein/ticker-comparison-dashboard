@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-04-11
+
+### Fixed
+- **CRITICAL**: Filter out null values from Yahoo Finance API responses
+- Charts no longer drop to 0% when API returns null close prices (e.g., Jan 30 - Feb 2, 2026)
+- Hover tooltip now works correctly at all data points
+- Both price and volume data filtered identically to maintain x-axis alignment
+
+### Changed
+- Apply .filter() to both priceData and volumeData with same criteria
+- Remove null/NaN values before setting chart data
+- Clean up debug console logging
+
+### Technical
+- Filter chain: .map() → .filter(value != null && !isNaN(value))
+- Identical filtering logic ensures price and volume charts stay aligned
+- X-axis alignment preserved from v1.2.2
+
 ## [1.2.2] - 2026-04-11
 
 ### Fixed
