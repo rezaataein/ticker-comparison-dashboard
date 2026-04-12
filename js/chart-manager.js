@@ -267,19 +267,33 @@ class ChartManager {
     setupTooltip(tickerDataArray) {
         if (!this.chart) return;
 
-        // Create map for quick lookup of actual prices by time
+        // Create maps for quick lookup of prices and volumes by time
         const priceMap = {};
+        const volumeMap = {};
+        const percentMap = {};
+
         tickerDataArray.forEach(data => {
             data.dates.forEach((date, i) => {
                 const time = Math.floor(date.getTime() / 1000);
                 const closePrice = data.close[i];
+                const volume = data.volume[i];
+                const percentChange = data.percentChange[i];
 
-                // Only store valid prices (not null/undefined/NaN)
+                if (!priceMap[time]) {
+                    priceMap[time] = {};
+                    volumeMap[time] = {};
+                    percentMap[time] = {};
+                }
+
+                // Only store valid values (not null/undefined/NaN)
                 if (closePrice != null && !isNaN(closePrice)) {
-                    if (!priceMap[time]) {
-                        priceMap[time] = {};
-                    }
                     priceMap[time][data.ticker] = closePrice;
+                }
+                if (volume != null && !isNaN(volume)) {
+                    volumeMap[time][data.ticker] = volume;
+                }
+                if (percentChange != null && !isNaN(percentChange)) {
+                    percentMap[time][data.ticker] = percentChange;
                 }
             });
         });
@@ -303,22 +317,20 @@ class ChartManager {
             // Update legend with current values
             this.priceSeries.forEach(({ series, ticker }) => {
                 const legendItem = document.getElementById(`legend-${ticker}`);
+                if (!legendItem) return;
+
+                const valuesSpan = legendItem.querySelector('.legend-values');
+                if (!valuesSpan) return;
+
                 const actualPrice = priceMap[param.time]?.[ticker];
+                const percentChange = percentMap[param.time]?.[ticker];
 
-                if (legendItem && actualPrice != null && !isNaN(actualPrice)) {
-                    const valuesSpan = legendItem.querySelector('.legend-values');
-
-                    if (valuesSpan) {
-                        // Get the percentage change from the chart data
-                        const seriesData = param.seriesData?.get(series);
-                        const percentChange = seriesData?.value;
-
-                        if (percentChange != null && !isNaN(percentChange)) {
-                            valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${percentChange.toFixed(2)}%)`;
-                        } else {
-                            valuesSpan.textContent = ` $${actualPrice.toFixed(2)}`;
-                        }
-                    }
+                if (actualPrice != null && !isNaN(actualPrice) && percentChange != null && !isNaN(percentChange)) {
+                    valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${percentChange.toFixed(2)}%)`;
+                } else if (actualPrice != null && !isNaN(actualPrice)) {
+                    valuesSpan.textContent = ` $${actualPrice.toFixed(2)}`;
+                } else {
+                    valuesSpan.textContent = '';
                 }
             });
         });
@@ -328,7 +340,7 @@ class ChartManager {
             this.volumeChart.subscribeCrosshairMove((param) => {
                 if (!param || !param.time) {
                     // Reset legend to just show ticker names
-                    this.priceSeries.forEach(({ ticker }) => {
+                    this.volumeSeries.forEach(({ ticker }) => {
                         const legendItem = document.getElementById(`legend-${ticker}`);
                         if (legendItem) {
                             const valuesSpan = legendItem.querySelector('.legend-values');
@@ -340,26 +352,28 @@ class ChartManager {
                     return;
                 }
 
-                // Update legend with current values based on volume chart time
-                this.priceSeries.forEach(({ series, ticker }) => {
+                // Update legend with VOLUME values when hovering over volume chart
+                this.volumeSeries.forEach(({ ticker }) => {
                     const legendItem = document.getElementById(`legend-${ticker}`);
+                    if (!legendItem) return;
+
+                    const valuesSpan = legendItem.querySelector('.legend-values');
+                    if (!valuesSpan) return;
+
+                    const volume = volumeMap[param.time]?.[ticker];
                     const actualPrice = priceMap[param.time]?.[ticker];
 
-                    if (legendItem && actualPrice != null && !isNaN(actualPrice)) {
-                        const valuesSpan = legendItem.querySelector('.legend-values');
+                    if (volume != null && !isNaN(volume)) {
+                        // Format volume with commas
+                        const formattedVolume = volume.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
-                        if (valuesSpan) {
-                            // Get the percentage change from the price chart data at this time
-                            const priceSeriesData = series.data();
-                            const dataPoint = priceSeriesData.find(d => d.time === param.time);
-                            const percentChange = dataPoint?.value;
-
-                            if (percentChange != null && !isNaN(percentChange)) {
-                                valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${percentChange.toFixed(2)}%)`;
-                            } else {
-                                valuesSpan.textContent = ` $${actualPrice.toFixed(2)}`;
-                            }
+                        if (actualPrice != null && !isNaN(actualPrice)) {
+                            valuesSpan.textContent = ` Vol: ${formattedVolume} | $${actualPrice.toFixed(2)}`;
+                        } else {
+                            valuesSpan.textContent = ` Vol: ${formattedVolume}`;
                         }
+                    } else {
+                        valuesSpan.textContent = '';
                     }
                 });
             });
