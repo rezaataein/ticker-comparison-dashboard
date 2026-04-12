@@ -290,10 +290,19 @@ class ChartManager {
 
         tickerDataArray.forEach(data => {
             data.dates.forEach((date, i) => {
-                const time = Math.floor(date.getTime() / 1000);
                 const closePrice = data.close[i];
                 const volume = data.volume[i];
                 const percentChange = data.percentChange[i];
+
+                // Only store valid data points (skip nulls)
+                if (closePrice == null || volume == null || percentChange == null) {
+                    return;
+                }
+                if (isNaN(closePrice) || isNaN(volume) || isNaN(percentChange)) {
+                    return;
+                }
+
+                const time = Math.floor(date.getTime() / 1000);
 
                 if (!priceMap[time]) {
                     priceMap[time] = {};
