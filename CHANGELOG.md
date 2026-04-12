@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-11
+
+### Fixed - Major QA Overhaul
+- **X-axis alignment**: Set minimumWidth: 60 on both price scales for perfect alignment
+- **Date formatting**: Fixed "12:00" showing instead of date - added custom tickMarkFormatter
+  - Daily data: Shows "Apr 11" format
+  - Intraday data: Shows "14:30" format (24-hour time)
+- **Missing hover data**: Filter out null/undefined/NaN values before creating chart data
+- **Infinite loop**: Fixed syncTimeScales with isSyncing flag to prevent circular updates
+- **Data quality**: Validate all data points before adding to charts (price, volume, percentChange)
+
+### Changed
+- Moved syncTimeScales to after fitContent() for proper initialization
+- Filter priceData and volumeData to only include valid points
+- Improved data validation throughout tooltip logic
+
+### Technical
+- Set rightPriceScale.minimumWidth: 60 on both charts
+- Custom tickMarkFormatter for proper date/time display
+- Filter chain: map → filter(valid) → setData
+- Prevent sync loop with shared isSyncing flag
+
 ## [1.1.7] - 2026-04-11
 
 ### Fixed
