@@ -1,12 +1,16 @@
 /**
- * Chart Manager
- * Handles Plotly.js chart rendering
+ * Chart Manager - TradingView Lightweight Charts
+ * Handles chart rendering with native mobile touch support
  */
 
 class ChartManager {
     constructor(chartElementId) {
-        this.chartElement = document.getElementById(chartElementId);
+        this.chartContainer = document.getElementById(chartElementId);
+        this.chart = null;
+        this.volumeChart = null;
         this.currentData = [];
+        this.priceSeries = [];
+        this.volumeSeries = [];
     }
 
     /**
@@ -20,244 +24,260 @@ class ChartManager {
         this.currentInterval = interval;
         this.currentShowVolume = showVolume;
 
-        const traces = [];
-
-        // Price traces (percent change) - main chart
-        tickerDataArray.forEach((data, index) => {
-            traces.push({
-                x: data.dates,
-                y: data.percentChange,
-                name: data.ticker,
-                type: 'scatter',
-                mode: 'lines',
-                line: {
-                    width: 2,
-                    shape: 'spline',
-                    smoothing: 1.0
-                },
-                xaxis: 'x',
-                yaxis: 'y',
-                customdata: data.close,
-                hovertemplate: '<b>%{fullData.name}</b><br>' +
-                              'Price: $%{customdata:.2f}<br>' +
-                              'Change: %{y:.2f}%<br>' +
-                              '<extra></extra>'
-            });
-        });
-
-        // Volume traces - separate subplot below
-        if (showVolume) {
-            tickerDataArray.forEach((data, index) => {
-                traces.push({
-                    x: data.dates,
-                    y: data.volume,
-                    name: `${data.ticker} Vol`,
-                    type: 'bar',
-                    xaxis: 'x2',
-                    yaxis: 'y2',
-                    opacity: 0.5,
-                    showlegend: false,
-                    hovertemplate: '<b>%{fullData.name}</b><br>' +
-                                  'Volume: %{y:,.0f}<br>' +
-                                  '<extra></extra>'
-                });
-            });
-        }
+        // Clear existing charts
+        this.clear();
 
         // Determine if showing intraday data
         const isIntraday = ['1m', '5m', '15m', '30m', '60m'].includes(interval);
         const intervalLabel = this.getIntervalLabel(interval);
 
-        const layout = {
-            title: `Ticker Comparison - ${intervalLabel}`,
-            hovermode: 'x unified',
-            hoversubplots: 'axis',
-            dragmode: 'pan',
-            hoverdistance: 50,
-            xaxis: {
-                title: isIntraday ? 'Date & Time (ET)' : 'Date',
-                type: 'date',
-                domain: [0, 1],
-                anchor: 'y',
-                showspikes: true,
-                spikemode: 'across+toaxis+marker',
-                spikesnap: 'cursor',
-                spikecolor: '#999',
-                spikethickness: 2,
-                spikedash: 'solid',
-                fixedrange: true
-            },
-            xaxis2: {
-                type: 'date',
-                domain: [0, 1],
-                anchor: 'y2',
-                matches: 'x',
-                showticklabels: false,
-                showspikes: true,
-                spikemode: 'across+toaxis+marker',
-                spikesnap: 'cursor',
-                spikecolor: '#999',
-                spikethickness: 2,
-                spikedash: 'solid',
-                fixedrange: true
-            },
-            yaxis: {
-                title: 'Price Change (%)',
-                domain: showVolume ? [0.35, 1] : [0, 1],
-                showgrid: true,
-                zeroline: true,
-                fixedrange: true
-            },
-            yaxis2: {
-                title: 'Volume',
-                domain: showVolume ? [0, 0.3] : [0, 0],
-                showgrid: false,
-                fixedrange: true
-            },
-            legend: {
-                orientation: 'h',
-                yanchor: 'top',
-                y: -0.15,
-                xanchor: 'center',
-                x: 0.5,
-                bgcolor: 'rgba(255, 255, 255, 0.9)',
-                bordercolor: '#e2e8f0',
-                borderwidth: 1
-            },
-            margin: { t: 60, b: 100, l: 60, r: 60 },
-            autosize: true
-        };
+        // Create container structure
+        this.chartContainer.innerHTML = `
+            <div class="chart-header">
+                <h3>Ticker Comparison - ${intervalLabel}</h3>
+            </div>
+            <div id="price-chart" class="price-chart-container"></div>
+            ${showVolume ? '<div id="volume-chart" class="volume-chart-container"></div>' : ''}
+            <div class="chart-legend" id="legend"></div>
+        `;
 
-        // Remove gaps - collect all actual data points and hide everything else
-        const allDates = new Set();
-        tickerDataArray.forEach(data => {
-            data.dates.forEach(date => allDates.add(date.getTime()));
+        const priceContainer = document.getElementById('price-chart');
+        const volumeContainer = showVolume ? document.getElementById('volume-chart') : null;
+
+        // Chart dimensions
+        const priceHeight = showVolume ? 400 : 550;
+        const volumeHeight = 150;
+
+        // Create price chart
+        this.chart = LightweightCharts.createChart(priceContainer, {
+            width: priceContainer.clientWidth,
+            height: priceHeight,
+            layout: {
+                background: { color: '#ffffff' },
+                textColor: '#1e293b',
+            },
+            grid: {
+                vertLines: { color: '#f1f5f9' },
+                horzLines: { color: '#f1f5f9' },
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+                vertLine: {
+                    width: 1,
+                    color: '#9CA3AF',
+                    style: LightweightCharts.LineStyle.Solid,
+                },
+                horzLine: {
+                    width: 1,
+                    color: '#9CA3AF',
+                    style: LightweightCharts.LineStyle.Solid,
+                },
+            },
+            rightPriceScale: {
+                borderColor: '#e2e8f0',
+                scaleMargins: {
+                    top: 0.1,
+                    bottom: 0.1,
+                },
+            },
+            timeScale: {
+                borderColor: '#e2e8f0',
+                timeVisible: isIntraday,
+                secondsVisible: false,
+                fixLeftEdge: true,
+                fixRightEdge: true,
+            },
+            handleScroll: false,
+            handleScale: false,
         });
 
-        const sortedDates = Array.from(allDates).sort((a, b) => a - b);
-        const rangebreaks = [];
+        // Create volume chart if needed
+        if (showVolume && volumeContainer) {
+            this.volumeChart = LightweightCharts.createChart(volumeContainer, {
+                width: volumeContainer.clientWidth,
+                height: volumeHeight,
+                layout: {
+                    background: { color: '#ffffff' },
+                    textColor: '#1e293b',
+                },
+                grid: {
+                    vertLines: { color: '#f1f5f9' },
+                    horzLines: { color: '#f1f5f9' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                    vertLine: {
+                        width: 1,
+                        color: '#9CA3AF',
+                        style: LightweightCharts.LineStyle.Solid,
+                    },
+                    horzLine: {
+                        visible: false,
+                    },
+                },
+                rightPriceScale: {
+                    borderColor: '#e2e8f0',
+                    scaleMargins: {
+                        top: 0.1,
+                        bottom: 0.1,
+                    },
+                },
+                timeScale: {
+                    borderColor: '#e2e8f0',
+                    timeVisible: isIntraday,
+                    secondsVisible: false,
+                    visible: true,
+                    fixLeftEdge: true,
+                    fixRightEdge: true,
+                },
+                handleScroll: false,
+                handleScale: false,
+            });
 
-        // Find gaps between consecutive data points
-        for (let i = 1; i < sortedDates.length; i++) {
-            const prevDate = new Date(sortedDates[i - 1]);
-            const currDate = new Date(sortedDates[i]);
-            const gapMs = currDate - prevDate;
+            // Sync crosshair between charts
+            this.syncCharts();
+        }
 
-            // If gap is more than expected interval, add rangebreak
-            const expectedGapMs = this.getExpectedGapMs(interval);
-            if (gapMs > expectedGapMs * 1.5) {
-                rangebreaks.push({
-                    bounds: [prevDate, currDate]
+        // Color palette for different tickers
+        const colors = [
+            '#2563eb', // Blue
+            '#dc2626', // Red
+            '#16a34a', // Green
+            '#ea580c', // Orange
+            '#9333ea', // Purple
+            '#0891b2', // Cyan
+        ];
+
+        // Add series for each ticker
+        tickerDataArray.forEach((data, index) => {
+            const color = colors[index % colors.length];
+
+            // Add price series (line)
+            const lineSeries = this.chart.addLineSeries({
+                color: color,
+                lineWidth: 2,
+                title: data.ticker,
+                priceFormat: {
+                    type: 'custom',
+                    formatter: (price) => `${price.toFixed(2)}%`,
+                },
+            });
+
+            // Convert data to TradingView format
+            const priceData = data.dates.map((date, i) => ({
+                time: Math.floor(date.getTime() / 1000), // Unix timestamp in seconds
+                value: data.percentChange[i],
+            }));
+
+            lineSeries.setData(priceData);
+            this.priceSeries.push({ series: lineSeries, ticker: data.ticker, color: color });
+
+            // Add volume series if needed
+            if (showVolume && this.volumeChart) {
+                const volumeSeries = this.volumeChart.addHistogramSeries({
+                    color: color,
+                    priceFormat: {
+                        type: 'volume',
+                    },
+                    priceScaleId: '',
                 });
+
+                const volumeData = data.dates.map((date, i) => ({
+                    time: Math.floor(date.getTime() / 1000),
+                    value: data.volume[i],
+                    color: color + '80', // 50% opacity
+                }));
+
+                volumeSeries.setData(volumeData);
+                this.volumeSeries.push({ series: volumeSeries, ticker: data.ticker, color: color });
             }
+        });
+
+        // Fit content
+        this.chart.timeScale().fitContent();
+        if (this.volumeChart) {
+            this.volumeChart.timeScale().fitContent();
         }
 
-        layout.xaxis.rangebreaks = rangebreaks;
-        layout.xaxis2.rangebreaks = rangebreaks;
+        // Create legend
+        this.createLegend();
 
-        // Add shaded regions for market sessions (intraday only)
-        if (isIntraday) {
-            layout.shapes = this.getMarketSessionShapes(tickerDataArray);
-            layout.annotations = [
-                {
-                    x: 0.5,
-                    y: 1.05,
-                    xref: 'paper',
-                    yref: 'paper',
-                    text: '🔵 Pre-Market (4-9:30am) | ⚪ Market (9:30am-4pm) | 🟠 After-Hours (4-8pm)',
-                    showarrow: false,
-                    font: { size: 10, color: '#64748b' },
-                    bgcolor: 'rgba(255, 255, 255, 0.9)',
-                    borderpad: 4,
-                    xanchor: 'center',
-                    yanchor: 'bottom'
+        // Handle resize
+        this.setupResize();
+    }
+
+    /**
+     * Sync crosshair movement between price and volume charts
+     */
+    syncCharts() {
+        if (!this.chart || !this.volumeChart) return;
+
+        const syncCrosshair = (fromChart, toChart) => {
+            fromChart.subscribeCrosshairMove((param) => {
+                if (!param || !param.time) {
+                    toChart.clearCrosshairPosition();
+                    return;
                 }
-            ];
+                toChart.setCrosshairPosition(0, param.time, toChart.series()[0]);
+            });
+        };
+
+        syncCrosshair(this.chart, this.volumeChart);
+        syncCrosshair(this.volumeChart, this.chart);
+    }
+
+    /**
+     * Create interactive legend
+     */
+    createLegend() {
+        const legendContainer = document.getElementById('legend');
+        if (!legendContainer) return;
+
+        legendContainer.innerHTML = '';
+
+        this.priceSeries.forEach(({ ticker, color }) => {
+            const legendItem = document.createElement('div');
+            legendItem.className = 'legend-item';
+            legendItem.innerHTML = `
+                <span class="legend-color" style="background-color: ${color}"></span>
+                <span class="legend-ticker">${ticker}</span>
+            `;
+            legendContainer.appendChild(legendItem);
+        });
+    }
+
+    /**
+     * Setup responsive resize handling
+     */
+    setupResize() {
+        const resizeObserver = new ResizeObserver(entries => {
+            if (this.chart) {
+                const priceContainer = document.getElementById('price-chart');
+                if (priceContainer) {
+                    this.chart.applyOptions({
+                        width: priceContainer.clientWidth
+                    });
+                }
+            }
+            if (this.volumeChart) {
+                const volumeContainer = document.getElementById('volume-chart');
+                if (volumeContainer) {
+                    this.volumeChart.applyOptions({
+                        width: volumeContainer.clientWidth
+                    });
+                }
+            }
+        });
+
+        if (document.getElementById('price-chart')) {
+            resizeObserver.observe(document.getElementById('price-chart'));
+        }
+        if (document.getElementById('volume-chart')) {
+            resizeObserver.observe(document.getElementById('volume-chart'));
         }
 
-        const config = {
-            responsive: true,
-            displayModeBar: false,
-            scrollZoom: false,
-            doubleClick: false,
-            displaylogo: false,
-            modeBarButtonsToRemove: ['toImage']
-        };
-
-        Plotly.newPlot(this.chartElement, traces, layout, config);
-
-        // Setup sticky hover for mobile
-        this.setupStickyHover();
-    }
-
-    /**
-     * Get expected gap in milliseconds for an interval
-     */
-    getExpectedGapMs(interval) {
-        const gaps = {
-            '1m': 60 * 1000,
-            '5m': 5 * 60 * 1000,
-            '15m': 15 * 60 * 1000,
-            '30m': 30 * 60 * 1000,
-            '60m': 60 * 60 * 1000,
-            '1d': 24 * 60 * 60 * 1000
-        };
-        return gaps[interval] || 60 * 1000;
-    }
-
-    /**
-     * Generate market session background shapes
-     * Pre-market: 4:00-9:30 AM ET (light blue)
-     * Market hours: 9:30 AM-4:00 PM ET (transparent/white)
-     * After-hours: 4:00-8:00 PM ET (light orange)
-     */
-    getMarketSessionShapes(tickerDataArray) {
-        if (tickerDataArray.length === 0) return [];
-
-        const shapes = [];
-        const dates = tickerDataArray[0].dates;
-
-        // Find unique trading days
-        const tradingDays = new Set();
-        dates.forEach(date => {
-            const dayStr = date.toISOString().split('T')[0];
-            tradingDays.add(dayStr);
-        });
-
-        // For each trading day, add session backgrounds
-        tradingDays.forEach(dayStr => {
-            const dayDate = new Date(dayStr + 'T00:00:00');
-
-            // Pre-market: 4:00 AM - 9:30 AM ET
-            shapes.push({
-                type: 'rect',
-                xref: 'x',
-                yref: 'y domain',
-                x0: new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), 4, 0),
-                x1: new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), 9, 30),
-                y0: 0,
-                y1: 1,
-                fillcolor: 'rgba(135, 206, 250, 0.15)', // Light blue
-                line: { width: 0 },
-                layer: 'below'
-            });
-
-            // After-hours: 4:00 PM - 8:00 PM ET
-            shapes.push({
-                type: 'rect',
-                xref: 'x',
-                yref: 'y domain',
-                x0: new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), 16, 0),
-                x1: new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), 20, 0),
-                y0: 0,
-                y1: 1,
-                fillcolor: 'rgba(255, 165, 0, 0.15)', // Light orange
-                line: { width: 0 },
-                layer: 'below'
-            });
-        });
-
-        return shapes;
+        // Store for cleanup
+        this.resizeObserver = resizeObserver;
     }
 
     /**
@@ -279,92 +299,36 @@ class ChartManager {
      * Clear the chart
      */
     clear() {
-        if (this.chartElement) {
-            Plotly.purge(this.chartElement);
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
         }
+
+        if (this.chart) {
+            this.chart.remove();
+            this.chart = null;
+        }
+
+        if (this.volumeChart) {
+            this.volumeChart.remove();
+            this.volumeChart = null;
+        }
+
+        this.priceSeries = [];
+        this.volumeSeries = [];
         this.currentData = [];
+
+        if (this.chartContainer) {
+            this.chartContainer.innerHTML = '';
+        }
     }
 
     /**
      * Toggle volume visibility
      */
     toggleVolume(showVolume) {
-        // Just re-render - simpler and more reliable
+        // Just re-render with new setting
         if (this.currentData && this.currentData.length > 0 && this.currentInterval) {
             this.renderChart(this.currentData, showVolume, this.currentInterval);
         }
-    }
-
-    /**
-     * Setup sticky hover for mobile (drag finger to see values)
-     * Uses hybrid approach: listen to touch events and simulate hover
-     */
-    setupStickyHover() {
-        const plotDiv = this.chartElement;
-        let isDragging = false;
-
-        // Remove any existing listeners
-        if (this._touchHandlers) {
-            plotDiv.removeEventListener('touchstart', this._touchHandlers.start);
-            plotDiv.removeEventListener('touchmove', this._touchHandlers.move);
-            plotDiv.removeEventListener('touchend', this._touchHandlers.end);
-        }
-
-        const handleTouchStart = (e) => {
-            isDragging = true;
-            // Trigger initial hover at touch point
-            handleTouchMove(e);
-        };
-
-        const handleTouchMove = (e) => {
-            if (!isDragging) return;
-
-            // Don't prevent default - let page scroll vertically
-            // Only prevent horizontal scrolling
-            const touch = e.touches[0];
-            const plotRect = plotDiv.getBoundingClientRect();
-
-            // Check if touch is within plot area
-            if (touch.clientX < plotRect.left || touch.clientX > plotRect.right) {
-                return;
-            }
-
-            // Calculate position relative to plot
-            const xPos = touch.clientX - plotRect.left;
-            const yPos = touch.clientY - plotRect.top;
-
-            // Find the plot layer (where hover happens)
-            const plotArea = plotDiv.querySelector('.nsewdrag');
-            if (!plotArea) return;
-
-            // Create a synthetic mousemove event to trigger Plotly's hover
-            const mouseEvent = new MouseEvent('mousemove', {
-                view: window,
-                bubbles: true,
-                cancelable: true,
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-
-            plotArea.dispatchEvent(mouseEvent);
-        };
-
-        const handleTouchEnd = () => {
-            isDragging = false;
-            // Keep hover visible after touch ends (sticky behavior)
-            // Don't call Plotly.Fx.unhover - let it stay
-        };
-
-        // Attach event listeners
-        plotDiv.addEventListener('touchstart', handleTouchStart, { passive: true });
-        plotDiv.addEventListener('touchmove', handleTouchMove, { passive: true });
-        plotDiv.addEventListener('touchend', handleTouchEnd, { passive: true });
-
-        // Store handlers for cleanup
-        this._touchHandlers = {
-            start: handleTouchStart,
-            move: handleTouchMove,
-            end: handleTouchEnd
-        };
     }
 }
