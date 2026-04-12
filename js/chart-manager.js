@@ -205,6 +205,12 @@ class ChartManager {
                 value: data.percentChange[i],
             }));
 
+            // Debug: Check for null values in chart data
+            const nullValues = priceData.filter(d => d.value === null).length;
+            if (nullValues > 0) {
+                console.warn(`${data.ticker}: ${nullValues} null values in priceData for chart`);
+            }
+
             lineSeries.setData(priceData);
             this.priceSeries.push({
                 series: lineSeries,
