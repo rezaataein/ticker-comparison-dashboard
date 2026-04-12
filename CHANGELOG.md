@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2026-04-11
+
+### Fixed
+- **X-axis labels**: 4-month ranges now show dates instead of hours (changed hourly threshold from 365 to 60 days)
+- **X-axis alignment**: Price and volume charts now perfectly aligned (fixed width instead of minimumWidth on price scales)
+
+### Changed
+- Auto-interval thresholds: 1-7d→5m, 8-14d→15m, 15-30d→30m, 31-60d→60m, 61+d→1d
+- Both price scales now use fixed `width: 80` instead of `minimumWidth: 60`
+- Ensures identical right-side padding on both charts for perfect x-axis alignment
+
 ## [1.2.4] - 2026-04-11
 
 ### Fixed

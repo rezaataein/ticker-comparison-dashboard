@@ -80,7 +80,7 @@ class ChartManager {
                     top: 0.1,
                     bottom: 0.1,
                 },
-                minimumWidth: 60,
+                width: 80,
             },
             timeScale: {
                 borderColor: '#e2e8f0',
@@ -140,7 +140,7 @@ class ChartManager {
                         top: 0.1,
                         bottom: 0.1,
                     },
-                    minimumWidth: 60,
+                    width: 80,
                 },
                 timeScale: {
                     borderColor: '#e2e8f0',
