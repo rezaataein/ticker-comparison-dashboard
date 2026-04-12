@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-04-11
+
+### Added
+- Actual stock prices now shown in legend on hover/crosshair move
+- Format: TICKER $123.45 (5.67%) - shows both actual price and percentage change
+- Interactive legend updates dynamically as you move crosshair
+
 ## [1.1.1] - 2026-04-11
 
 ### Fixed
