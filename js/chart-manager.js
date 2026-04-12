@@ -199,21 +199,11 @@ class ChartManager {
                 },
             });
 
-            // Convert data to TradingView format, filtering out invalid data
-            const priceData = data.dates
-                .map((date, i) => ({
-                    time: Math.floor(date.getTime() / 1000), // Unix timestamp in seconds
-                    value: data.percentChange[i],
-                    actualPrice: data.close[i],
-                    ticker: data.ticker
-                }))
-                .filter(item => {
-                    // Only include valid data points
-                    return item.value != null &&
-                           !isNaN(item.value) &&
-                           item.actualPrice != null &&
-                           !isNaN(item.actualPrice);
-                });
+            // Convert data to TradingView format
+            const priceData = data.dates.map((date, i) => ({
+                time: Math.floor(date.getTime() / 1000), // Unix timestamp in seconds
+                value: data.percentChange[i],
+            }));
 
             lineSeries.setData(priceData);
             this.priceSeries.push({
@@ -233,18 +223,11 @@ class ChartManager {
                     priceScaleId: '',
                 });
 
-                const volumeData = data.dates
-                    .map((date, i) => ({
-                        time: Math.floor(date.getTime() / 1000),
-                        value: data.volume[i],
-                        color: color + '80', // 50% opacity
-                    }))
-                    .filter(item => {
-                        // Only include valid volume data
-                        return item.value != null &&
-                               !isNaN(item.value) &&
-                               item.value > 0;
-                    });
+                const volumeData = data.dates.map((date, i) => ({
+                    time: Math.floor(date.getTime() / 1000),
+                    value: data.volume[i],
+                    color: color + '80', // 50% opacity
+                }));
 
                 volumeSeries.setData(volumeData);
                 this.volumeSeries.push({ series: volumeSeries, ticker: data.ticker, color: color });

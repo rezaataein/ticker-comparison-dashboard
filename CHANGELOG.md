@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-04-11
+
+### Fixed
+- **CRITICAL**: Removed data filtering that was causing different time ranges
+- Price and volume charts now show IDENTICAL time ranges
+- Both charts have exact same timestamps (no filtering removes different points)
+
+### Changed
+- Removed .filter() from priceData and volumeData creation
+- Back to simple .map() without filtering (like v1.1.6)
+- Charts align perfectly because they have exact same data points
+
 ## [1.2.1] - 2026-04-11
 
 ### Fixed
