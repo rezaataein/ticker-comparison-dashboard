@@ -353,6 +353,12 @@ body {
     color: var(--text-color);
 }
 
+.legend-values {
+    color: #64748b;
+    font-size: 0.8rem;
+    font-weight: 400;
+}
+
 /* Mobile-specific chart sizing */
 @media (max-width: 767px) {
     .chart-container {

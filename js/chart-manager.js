@@ -163,14 +163,23 @@ class ChartManager {
                 },
             });
 
-            // Convert data to TradingView format
+            // Convert data to TradingView format with actual prices stored
             const priceData = data.dates.map((date, i) => ({
                 time: Math.floor(date.getTime() / 1000), // Unix timestamp in seconds
                 value: data.percentChange[i],
+                customValues: {
+                    actualPrice: data.close[i],
+                    ticker: data.ticker
+                }
             }));
 
             lineSeries.setData(priceData);
-            this.priceSeries.push({ series: lineSeries, ticker: data.ticker, color: color });
+            this.priceSeries.push({
+                series: lineSeries,
+                ticker: data.ticker,
+                color: color,
+                actualPrices: data.close // Store actual prices for tooltip
+            });
 
             // Add volume series if needed
             if (showVolume && this.volumeChart) {
@@ -201,6 +210,9 @@ class ChartManager {
 
         // Create legend
         this.createLegend();
+
+        // Setup tooltip
+        this.setupTooltip(tickerDataArray);
 
         // Handle resize
         this.setupResize();
@@ -238,11 +250,64 @@ class ChartManager {
         this.priceSeries.forEach(({ ticker, color }) => {
             const legendItem = document.createElement('div');
             legendItem.className = 'legend-item';
+            legendItem.id = `legend-${ticker}`;
             legendItem.innerHTML = `
                 <span class="legend-color" style="background-color: ${color}"></span>
                 <span class="legend-ticker">${ticker}</span>
+                <span class="legend-values"></span>
             `;
             legendContainer.appendChild(legendItem);
+        });
+    }
+
+    /**
+     * Setup tooltip that shows actual prices on hover
+     */
+    setupTooltip(tickerDataArray) {
+        if (!this.chart) return;
+
+        // Create map for quick lookup of actual prices by time
+        const priceMap = {};
+        tickerDataArray.forEach(data => {
+            data.dates.forEach((date, i) => {
+                const time = Math.floor(date.getTime() / 1000);
+                if (!priceMap[time]) {
+                    priceMap[time] = {};
+                }
+                priceMap[time][data.ticker] = data.close[i];
+            });
+        });
+
+        // Subscribe to crosshair movement
+        this.chart.subscribeCrosshairMove((param) => {
+            if (!param || !param.time || !param.seriesData || param.seriesData.size === 0) {
+                // Reset legend to just show ticker names
+                this.priceSeries.forEach(({ ticker }) => {
+                    const legendItem = document.getElementById(`legend-${ticker}`);
+                    if (legendItem) {
+                        const valuesSpan = legendItem.querySelector('.legend-values');
+                        if (valuesSpan) {
+                            valuesSpan.textContent = '';
+                        }
+                    }
+                });
+                return;
+            }
+
+            // Update legend with current values
+            this.priceSeries.forEach(({ series, ticker }) => {
+                const data = param.seriesData.get(series);
+                const legendItem = document.getElementById(`legend-${ticker}`);
+
+                if (legendItem && data) {
+                    const valuesSpan = legendItem.querySelector('.legend-values');
+                    const actualPrice = priceMap[param.time]?.[ticker];
+
+                    if (valuesSpan && actualPrice !== undefined) {
+                        valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${data.value.toFixed(2)}%)`;
+                    }
+                }
+            });
         });
     }
 
