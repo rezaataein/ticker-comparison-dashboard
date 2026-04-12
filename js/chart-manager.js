@@ -251,15 +251,10 @@ class ChartManager {
             }
         });
 
-        // Fit content for both charts first
+        // Fit content - both charts will show same range naturally
         this.chart.timeScale().fitContent();
         if (this.volumeChart) {
             this.volumeChart.timeScale().fitContent();
-        }
-
-        // THEN sync time scales (after fitContent)
-        if (this.volumeChart) {
-            this.syncTimeScales();
         }
 
         // Create legend
@@ -270,33 +265,6 @@ class ChartManager {
 
         // Handle resize
         this.setupResize();
-    }
-
-    /**
-     * Sync time scales between price and volume charts
-     * Ensures x-axes are perfectly aligned
-     */
-    syncTimeScales() {
-        if (!this.chart || !this.volumeChart) return;
-
-        // Prevent infinite loop with flag
-        let isSyncing = false;
-
-        // Sync price chart → volume chart
-        this.chart.timeScale().subscribeVisibleLogicalRangeChange((timeRange) => {
-            if (isSyncing || !timeRange) return;
-            isSyncing = true;
-            this.volumeChart.timeScale().setVisibleLogicalRange(timeRange);
-            isSyncing = false;
-        });
-
-        // Sync volume chart → price chart
-        this.volumeChart.timeScale().subscribeVisibleLogicalRangeChange((timeRange) => {
-            if (isSyncing || !timeRange) return;
-            isSyncing = true;
-            this.chart.timeScale().setVisibleLogicalRange(timeRange);
-            isSyncing = false;
-        });
     }
 
     /**
