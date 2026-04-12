@@ -135,8 +135,8 @@ class ChartManager {
                 handleScale: false,
             });
 
-            // Note: Crosshair sync between charts can be added later if needed
-            // this.syncCharts();
+            // Sync time scales between charts
+            this.syncTimeScales();
         }
 
         // Color palette for different tickers
@@ -220,23 +220,28 @@ class ChartManager {
     }
 
     /**
-     * Sync crosshair movement between price and volume charts
+     * Sync time scales between price and volume charts
+     * Ensures x-axes are perfectly aligned
      */
-    syncCharts() {
+    syncTimeScales() {
         if (!this.chart || !this.volumeChart) return;
 
-        // Sync crosshair between charts
-        this.chart.subscribeCrosshairMove((param) => {
-            this.volumeChart.timeScale().applyOptions({
-                rightOffset: this.chart.timeScale().scrollPosition()
-            });
+        // Sync visible logical range changes
+        this.chart.timeScale().subscribeVisibleLogicalRangeChange((timeRange) => {
+            if (timeRange) {
+                this.volumeChart.timeScale().setVisibleLogicalRange(timeRange);
+            }
         });
 
-        this.volumeChart.subscribeCrosshairMove((param) => {
-            this.chart.timeScale().applyOptions({
-                rightOffset: this.volumeChart.timeScale().scrollPosition()
-            });
+        this.volumeChart.timeScale().subscribeVisibleLogicalRangeChange((timeRange) => {
+            if (timeRange) {
+                this.chart.timeScale().setVisibleLogicalRange(timeRange);
+            }
         });
+
+        // Initial sync - fit both charts to same range
+        this.chart.timeScale().fitContent();
+        this.volumeChart.timeScale().fitContent();
     }
 
     /**
