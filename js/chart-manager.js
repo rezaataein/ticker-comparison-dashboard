@@ -80,6 +80,7 @@ class ChartManager {
                     top: 0.1,
                     bottom: 0.1,
                 },
+                minimumWidth: 60,
             },
             timeScale: {
                 borderColor: '#e2e8f0',
@@ -87,6 +88,23 @@ class ChartManager {
                 secondsVisible: false,
                 fixLeftEdge: true,
                 fixRightEdge: true,
+                tickMarkFormatter: (time) => {
+                    const date = new Date(time * 1000);
+                    if (isIntraday) {
+                        // For intraday: show time (HH:MM)
+                        return date.toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: false
+                        });
+                    } else {
+                        // For daily: show date (MMM DD)
+                        return date.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                        });
+                    }
+                },
             },
             handleScroll: false,
             handleScale: false,
@@ -122,6 +140,7 @@ class ChartManager {
                         top: 0.1,
                         bottom: 0.1,
                     },
+                    minimumWidth: 60,
                 },
                 timeScale: {
                     borderColor: '#e2e8f0',
@@ -130,13 +149,29 @@ class ChartManager {
                     visible: true,
                     fixLeftEdge: true,
                     fixRightEdge: true,
+                    tickMarkFormatter: (time) => {
+                        const date = new Date(time * 1000);
+                        if (isIntraday) {
+                            // For intraday: show time (HH:MM)
+                            return date.toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: false
+                            });
+                        } else {
+                            // For daily: show date (MMM DD)
+                            return date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric'
+                            });
+                        }
+                    },
                 },
                 handleScroll: false,
                 handleScale: false,
             });
 
-            // Sync time scales between charts
-            this.syncTimeScales();
+            // Time scales will be synced after data is loaded
         }
 
         // Color palette for different tickers
@@ -164,15 +199,21 @@ class ChartManager {
                 },
             });
 
-            // Convert data to TradingView format with actual prices stored
-            const priceData = data.dates.map((date, i) => ({
-                time: Math.floor(date.getTime() / 1000), // Unix timestamp in seconds
-                value: data.percentChange[i],
-                customValues: {
+            // Convert data to TradingView format, filtering out invalid data
+            const priceData = data.dates
+                .map((date, i) => ({
+                    time: Math.floor(date.getTime() / 1000), // Unix timestamp in seconds
+                    value: data.percentChange[i],
                     actualPrice: data.close[i],
                     ticker: data.ticker
-                }
-            }));
+                }))
+                .filter(item => {
+                    // Only include valid data points
+                    return item.value != null &&
+                           !isNaN(item.value) &&
+                           item.actualPrice != null &&
+                           !isNaN(item.actualPrice);
+                });
 
             lineSeries.setData(priceData);
             this.priceSeries.push({
@@ -192,21 +233,33 @@ class ChartManager {
                     priceScaleId: '',
                 });
 
-                const volumeData = data.dates.map((date, i) => ({
-                    time: Math.floor(date.getTime() / 1000),
-                    value: data.volume[i],
-                    color: color + '80', // 50% opacity
-                }));
+                const volumeData = data.dates
+                    .map((date, i) => ({
+                        time: Math.floor(date.getTime() / 1000),
+                        value: data.volume[i],
+                        color: color + '80', // 50% opacity
+                    }))
+                    .filter(item => {
+                        // Only include valid volume data
+                        return item.value != null &&
+                               !isNaN(item.value) &&
+                               item.value > 0;
+                    });
 
                 volumeSeries.setData(volumeData);
                 this.volumeSeries.push({ series: volumeSeries, ticker: data.ticker, color: color });
             }
         });
 
-        // Fit content
+        // Fit content for both charts first
         this.chart.timeScale().fitContent();
         if (this.volumeChart) {
             this.volumeChart.timeScale().fitContent();
+        }
+
+        // THEN sync time scales (after fitContent)
+        if (this.volumeChart) {
+            this.syncTimeScales();
         }
 
         // Create legend
@@ -226,22 +279,24 @@ class ChartManager {
     syncTimeScales() {
         if (!this.chart || !this.volumeChart) return;
 
-        // Sync visible logical range changes
+        // Prevent infinite loop with flag
+        let isSyncing = false;
+
+        // Sync price chart → volume chart
         this.chart.timeScale().subscribeVisibleLogicalRangeChange((timeRange) => {
-            if (timeRange) {
-                this.volumeChart.timeScale().setVisibleLogicalRange(timeRange);
-            }
+            if (isSyncing || !timeRange) return;
+            isSyncing = true;
+            this.volumeChart.timeScale().setVisibleLogicalRange(timeRange);
+            isSyncing = false;
         });
 
+        // Sync volume chart → price chart
         this.volumeChart.timeScale().subscribeVisibleLogicalRangeChange((timeRange) => {
-            if (timeRange) {
-                this.chart.timeScale().setVisibleLogicalRange(timeRange);
-            }
+            if (isSyncing || !timeRange) return;
+            isSyncing = true;
+            this.chart.timeScale().setVisibleLogicalRange(timeRange);
+            isSyncing = false;
         });
-
-        // Initial sync - fit both charts to same range
-        this.chart.timeScale().fitContent();
-        this.volumeChart.timeScale().fitContent();
     }
 
     /**
