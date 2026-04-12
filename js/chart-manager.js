@@ -280,7 +280,9 @@ class ChartManager {
 
         // Subscribe to crosshair movement
         this.chart.subscribeCrosshairMove((param) => {
-            if (!param || !param.time || !param.seriesData || param.seriesData.size === 0) {
+            console.log('Crosshair move:', param);
+
+            if (!param || !param.time) {
                 // Reset legend to just show ticker names
                 this.priceSeries.forEach(({ ticker }) => {
                     const legendItem = document.getElementById(`legend-${ticker}`);
@@ -296,15 +298,26 @@ class ChartManager {
 
             // Update legend with current values
             this.priceSeries.forEach(({ series, ticker }) => {
-                const data = param.seriesData.get(series);
                 const legendItem = document.getElementById(`legend-${ticker}`);
+                const actualPrice = priceMap[param.time]?.[ticker];
 
-                if (legendItem && data) {
+                console.log('Updating legend for', ticker, 'price:', actualPrice, 'time:', param.time);
+
+                if (legendItem && actualPrice !== undefined) {
                     const valuesSpan = legendItem.querySelector('.legend-values');
-                    const actualPrice = priceMap[param.time]?.[ticker];
 
-                    if (valuesSpan && actualPrice !== undefined) {
-                        valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${data.value.toFixed(2)}%)`;
+                    // Get the percentage change from the chart data
+                    const seriesData = param.seriesData?.get(series);
+                    const percentChange = seriesData?.value;
+
+                    console.log('Series data:', seriesData, 'percentChange:', percentChange);
+
+                    if (valuesSpan) {
+                        if (percentChange !== undefined) {
+                            valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${percentChange.toFixed(2)}%)`;
+                        } else {
+                            valuesSpan.textContent = ` $${actualPrice.toFixed(2)}`;
+                        }
                     }
                 }
             });
@@ -391,9 +404,16 @@ class ChartManager {
      * Toggle volume visibility
      */
     toggleVolume(showVolume) {
+        console.log('toggleVolume called with:', showVolume);
+        console.log('currentData:', this.currentData);
+        console.log('currentInterval:', this.currentInterval);
+
         // Just re-render with new setting
         if (this.currentData && this.currentData.length > 0 && this.currentInterval) {
+            console.log('Re-rendering chart...');
             this.renderChart(this.currentData, showVolume, this.currentInterval);
+        } else {
+            console.error('Cannot toggle volume - missing data or interval');
         }
     }
 }
