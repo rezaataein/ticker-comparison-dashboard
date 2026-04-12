@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.6] - 2026-04-11
+
+### Fixed
+- **MAJOR**: Volume hover now shows VOLUME data instead of prices
+- Fixed all null reference errors with defensive data validation
+- Created separate maps for prices, volumes, and percentages
+
+### Changed
+- Price chart hover: Shows "$175.43 (2.35%)"
+- Volume chart hover: Shows "Vol: 1,234,567 | $175.43"
+- Both price and volume data properly formatted and validated
+
 ## [1.1.5] - 2026-04-11
 
 ### Fixed
