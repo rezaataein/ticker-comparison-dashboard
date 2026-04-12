@@ -71,9 +71,9 @@ class DataFetcher {
 
         if (days <= 1) return '1m';      // Every minute for single day
         if (days <= 7) return '5m';      // Every 5 minutes for week
-        if (days <= 30) return '15m';    // Every 15 minutes for month
-        if (days <= 60) return '30m';    // Every 30 minutes for 2 months
-        if (days <= 365) return '60m';   // Hourly for year
+        if (days <= 14) return '15m';    // Every 15 minutes for 2 weeks
+        if (days <= 30) return '30m';    // Every 30 minutes for month
+        if (days <= 60) return '60m';    // Hourly for 2 months max
         return '1d';                     // Daily for longer periods
     }
 
