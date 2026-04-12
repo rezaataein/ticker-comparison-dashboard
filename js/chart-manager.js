@@ -300,15 +300,15 @@ class ChartManager {
                 const legendItem = document.getElementById(`legend-${ticker}`);
                 const actualPrice = priceMap[param.time]?.[ticker];
 
-                if (legendItem && actualPrice !== undefined) {
+                if (legendItem && actualPrice != null) { // Check for both null and undefined
                     const valuesSpan = legendItem.querySelector('.legend-values');
 
-                    // Get the percentage change from the chart data
-                    const seriesData = param.seriesData?.get(series);
-                    const percentChange = seriesData?.value;
-
                     if (valuesSpan) {
-                        if (percentChange !== undefined) {
+                        // Get the percentage change from the chart data
+                        const seriesData = param.seriesData?.get(series);
+                        const percentChange = seriesData?.value;
+
+                        if (percentChange != null) { // Check for both null and undefined
                             valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${percentChange.toFixed(2)}%)`;
                         } else {
                             valuesSpan.textContent = ` $${actualPrice.toFixed(2)}`;
