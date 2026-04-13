@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.6] - 2026-04-13
+
+### Added
+- Custom PWA icon with three-line chart design (blue, red, green lines)
+- Professional app icon replaces emoji for better branding
+- Apple touch icon support for iOS devices
+
+### Changed
+- New icon.svg file with multi-line ticker comparison visualization
+- Updated manifest.json to reference custom icon
+- Updated favicon and apple-touch-icon in index.html
+
 ## [1.2.5] - 2026-04-11
 
 ### Fixed

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect fill="#ffffff" width="512" height="512" rx="80"/>
+  <path stroke="#2563eb" stroke-width="16" fill="none" stroke-linecap="round"
+        d="M 60 350 L 120 280 L 180 300 L 240 200 L 300 220 L 360 140 L 420 100"/>
+  <path stroke="#dc2626" stroke-width="16" fill="none" stroke-linecap="round"
+        d="M 60 380 L 120 340 L 180 360 L 240 280 L 300 300 L 360 240 L 420 200"/>
+  <path stroke="#16a34a" stroke-width="16" fill="none" stroke-linecap="round"
+        d="M 60 400 L 120 380 L 180 390 L 240 340 L 300 350 L 360 310 L 420 280"/>
+  <text x="256" y="480" font-family="Arial" font-size="48" font-weight="bold" fill="#1e293b" text-anchor="middle">TICKER</text>
+</svg>
