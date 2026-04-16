@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-04-16
+
+### Fixed
+- **Timestamp Alignment Across Tickers** - Charts now only display data points that exist for ALL tickers
+  - Changed from independent processing to Map-based timestamp matching
+  - Prevents one ticker from extending beyond another's data range
+  - Ensures perfect x-axis alignment and prevents misleading gaps
+  - Handles cases where different tickers have different data availability
+
+- **Universal Timezone Display** - Time labels now work correctly for all users worldwide
+  - Created smart time formatters that adapt to data range
+  - Intraday (< 2 days): Shows time only → "4:00 PM"
+  - Multi-day intraday (2-60 days): Shows date + time → "Apr 16, 4:00 PM"
+  - Long-term daily (60+ days): Shows date only → "Apr 16"
+  - Very long-term (> 365 days): Adds year → "Apr 16, 2026"
+  - Uses browser's local timezone automatically (works for EDT, GMT, JST, etc.)
+
+### Added
+- **Smart Chart Formatters** - `js/chart-formatters.js`
+  - `createSmartTimeFormatter()` - Adapts tooltip format to data span
+  - `createSmartTickFormatter()` - Adapts axis label format to data span
+  - Applied to both price and volume charts
+
+### Changed
+- **Chart Rendering** - Timestamp alignment ensures consistent data display
+  - Builds Map for each ticker mapping timestamp → data point
+  - Filters to common timestamps (intersection of all tickers)
+  - Both price and volume charts use same aligned timestamps
+  - More accurate comparisons when data availability differs
+
+### Technical
+- All Unix timestamps remain in UTC (seconds since epoch)
+- Formatters use `toLocaleTimeString()` and `toLocaleDateString()` for automatic timezone conversion
+- Timestamp alignment prevents array index mismatches between tickers
+- Extended hours data already supported via `includePrePost=true` (from v1.2.1)
+
 ## [1.2.7] - 2026-04-13
 
 ### Changed

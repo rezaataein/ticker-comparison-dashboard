@@ -84,27 +84,13 @@ class ChartManager {
             },
             timeScale: {
                 borderColor: '#e2e8f0',
-                timeVisible: isIntraday,
+                timeVisible: true,
                 secondsVisible: false,
                 fixLeftEdge: true,
                 fixRightEdge: true,
-                tickMarkFormatter: (time) => {
-                    const date = new Date(time * 1000);
-                    if (isIntraday) {
-                        // For intraday: show time (HH:MM)
-                        return date.toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: false
-                        });
-                    } else {
-                        // For daily: show date (MMM DD)
-                        return date.toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric'
-                        });
-                    }
-                },
+            },
+            localization: {
+                timeFormatter: (time) => time, // Will be set after data loaded
             },
             handleScroll: false,
             handleScale: false,
@@ -144,28 +130,14 @@ class ChartManager {
                 },
                 timeScale: {
                     borderColor: '#e2e8f0',
-                    timeVisible: isIntraday,
+                    timeVisible: true,
                     secondsVisible: false,
                     visible: true,
                     fixLeftEdge: true,
                     fixRightEdge: true,
-                    tickMarkFormatter: (time) => {
-                        const date = new Date(time * 1000);
-                        if (isIntraday) {
-                            // For intraday: show time (HH:MM)
-                            return date.toLocaleTimeString('en-US', {
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: false
-                            });
-                        } else {
-                            // For daily: show date (MMM DD)
-                            return date.toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric'
-                            });
-                        }
-                    },
+                },
+                localization: {
+                    timeFormatter: (time) => time, // Will be set after data loaded
                 },
                 handleScroll: false,
                 handleScale: false,
@@ -184,9 +156,38 @@ class ChartManager {
             '#0891b2', // Cyan
         ];
 
-        // Add series for each ticker
+        // Build timestamp maps for each ticker (for alignment)
+        const tickerMaps = tickerDataArray.map(data => {
+            const map = new Map();
+            data.dates.forEach((date, i) => {
+                const timestamp = Math.floor(date.getTime() / 1000);
+                const percentChange = data.percentChange[i];
+                const volume = data.volume[i];
+
+                // Only store valid data points
+                if (percentChange != null && !isNaN(percentChange)) {
+                    map.set(timestamp, {
+                        percentChange: percentChange,
+                        volume: volume,
+                        close: data.close[i]
+                    });
+                }
+            });
+            return map;
+        });
+
+        // Find common timestamps (exist in ALL tickers)
+        const allTimestamps = new Set();
+        tickerMaps[0].forEach((_, timestamp) => allTimestamps.add(timestamp));
+
+        const commonTimestamps = Array.from(allTimestamps).filter(timestamp =>
+            tickerMaps.every(map => map.has(timestamp))
+        ).sort((a, b) => a - b);
+
+        // Add series for each ticker using aligned timestamps
         tickerDataArray.forEach((data, index) => {
             const color = colors[index % colors.length];
+            const tickerMap = tickerMaps[index];
 
             // Add price series (line)
             const lineSeries = this.chart.addSeries(LightweightCharts.LineSeries, {
@@ -199,13 +200,11 @@ class ChartManager {
                 },
             });
 
-            // Convert data to TradingView format, filtering out null/invalid data
-            const priceData = data.dates
-                .map((date, i) => ({
-                    time: Math.floor(date.getTime() / 1000),
-                    value: data.percentChange[i],
-                }))
-                .filter(item => item.value != null && !isNaN(item.value));
+            // Use only common timestamps
+            const priceData = commonTimestamps.map(timestamp => ({
+                time: timestamp,
+                value: tickerMap.get(timestamp).percentChange
+            }));
 
             lineSeries.setData(priceData);
             this.priceSeries.push({
@@ -225,19 +224,40 @@ class ChartManager {
                     priceScaleId: '',
                 });
 
-                // Filter volume data the same way as price data to maintain alignment
-                const volumeData = data.dates
-                    .map((date, i) => ({
-                        time: Math.floor(date.getTime() / 1000),
-                        value: data.volume[i],
-                        color: color + '80', // 50% opacity
-                    }))
+                // Use only common timestamps
+                const volumeData = commonTimestamps
+                    .map(timestamp => {
+                        const dataPoint = tickerMap.get(timestamp);
+                        return {
+                            time: timestamp,
+                            value: dataPoint.volume,
+                            color: color + '80', // 50% opacity
+                        };
+                    })
                     .filter(item => item.value != null && !isNaN(item.value));
 
                 volumeSeries.setData(volumeData);
                 this.volumeSeries.push({ series: volumeSeries, ticker: data.ticker, color: color });
             }
         });
+
+        // Apply smart time formatters based on data range
+        if (commonTimestamps.length > 0) {
+            const timeFormatter = createSmartTimeFormatter(commonTimestamps);
+            const tickFormatter = createSmartTickFormatter(commonTimestamps);
+
+            this.chart.applyOptions({
+                localization: { timeFormatter: timeFormatter },
+                timeScale: { tickMarkFormatter: tickFormatter }
+            });
+
+            if (this.volumeChart) {
+                this.volumeChart.applyOptions({
+                    localization: { timeFormatter: timeFormatter },
+                    timeScale: { tickMarkFormatter: tickFormatter }
+                });
+            }
+        }
 
         // Fit content - both charts will show same range naturally
         this.chart.timeScale().fitContent();
