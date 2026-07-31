@@ -211,6 +211,7 @@ class ChartManager {
                 series: lineSeries,
                 ticker: data.ticker,
                 color: color,
+                currency: data.metadata?.currency || 'USD',
                 actualPrices: data.close // Store actual prices for tooltip
             });
 
@@ -308,6 +309,12 @@ class ChartManager {
         const volumeMap = {};
         const percentMap = {};
 
+        // Currency per ticker (for correctly-symboled price labels, e.g. CAD for TEC.TO)
+        const currencyByTicker = {};
+        tickerDataArray.forEach(data => {
+            currencyByTicker[data.ticker] = data.metadata?.currency || 'USD';
+        });
+
         tickerDataArray.forEach(data => {
             data.dates.forEach((date, i) => {
                 const closePrice = data.close[i];
@@ -364,9 +371,9 @@ class ChartManager {
                 const percentChange = percentMap[param.time]?.[ticker];
 
                 if (actualPrice != null && !isNaN(actualPrice) && percentChange != null && !isNaN(percentChange)) {
-                    valuesSpan.textContent = ` $${actualPrice.toFixed(2)} (${percentChange.toFixed(2)}%)`;
+                    valuesSpan.textContent = ` ${formatPrice(actualPrice, currencyByTicker[ticker])} (${percentChange.toFixed(2)}%)`;
                 } else if (actualPrice != null && !isNaN(actualPrice)) {
-                    valuesSpan.textContent = ` $${actualPrice.toFixed(2)}`;
+                    valuesSpan.textContent = ` ${formatPrice(actualPrice, currencyByTicker[ticker])}`;
                 } else {
                     valuesSpan.textContent = '';
                 }
@@ -406,7 +413,7 @@ class ChartManager {
                         const formattedVolume = volume.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
                         if (actualPrice != null && !isNaN(actualPrice)) {
-                            valuesSpan.textContent = ` Vol: ${formattedVolume} | $${actualPrice.toFixed(2)}`;
+                            valuesSpan.textContent = ` Vol: ${formattedVolume} | ${formatPrice(actualPrice, currencyByTicker[ticker])}`;
                         } else {
                             valuesSpan.textContent = ` Vol: ${formattedVolume}`;
                         }

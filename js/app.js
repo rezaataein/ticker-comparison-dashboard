@@ -79,7 +79,7 @@ class TickerDashboard {
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'ticker-input';
-        input.placeholder = `Ticker ${tickerCount + 1} (e.g., AAPL)`;
+        input.placeholder = `Ticker ${tickerCount + 1} (e.g., AAPL, TEC.TO)`;
         input.style.textTransform = 'uppercase';
 
         // Auto-uppercase as user types
@@ -121,8 +121,13 @@ class TickerDashboard {
 
         inputs.forEach(input => {
             const ticker = input.value.trim().toUpperCase();
-            // Validate: non-empty, alphanumeric only, reasonable length
-            if (ticker && /^[A-Z0-9]{1,10}$/.test(ticker) && !tickers.includes(ticker)) {
+            // Validate Yahoo Finance symbols, including complex forms:
+            //   - Exchange suffixes:  TEC.TO, RY.TO, SHOP.TO, SAP.DE, 7203.T
+            //   - Class shares:       BRK.B, BRK-B
+            //   - Crypto / FX pairs:  BTC-USD, EURUSD=X
+            //   - Indices / futures:  ^GSPC, ^IXIC, ES=F
+            // Allowed chars: A-Z, 0-9, dot, hyphen, caret, equals (all safe as HTML text).
+            if (ticker && /^[A-Z0-9.\-^=]{1,20}$/.test(ticker) && !tickers.includes(ticker)) {
                 tickers.push(ticker);
             }
         });

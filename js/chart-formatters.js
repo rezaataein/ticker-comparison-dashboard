@@ -4,6 +4,29 @@
  */
 
 /**
+ * Format a price with the correct currency symbol for the ticker's exchange.
+ * USD -> "$123.45", CAD -> "CA$123.45", EUR -> "€123.45", etc.
+ * Falls back to a plain number + code for unrecognized currencies.
+ * @param {number} value - Price value
+ * @param {string} currency - ISO currency code from Yahoo metadata (e.g. 'USD', 'CAD')
+ * @returns {string}
+ */
+function formatPrice(value, currency) {
+    if (value == null || isNaN(value)) return '';
+    try {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: currency || 'USD',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(value);
+    } catch (e) {
+        // Unknown/invalid currency code -> plain number with the code appended
+        return `${value.toFixed(2)}${currency ? ' ' + currency : ''}`;
+    }
+}
+
+/**
  * Create smart formatter that adapts based on data span
  * @param {Array} timestamps - Array of Unix timestamps (seconds)
  * @returns {Function} Formatter function

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-07-31
+
+### Added
+- **Complex / international ticker support** - The ticker validator now accepts Yahoo Finance symbols beyond plain alphanumerics:
+  - Exchange suffixes: `TEC.TO`, `RY.TO`, `SHOP.TO`, `SAP.DE`, `7203.T`
+  - Class shares: `BRK.B`, `BRK-B`
+  - Crypto / FX pairs: `BTC-USD`, `EURUSD=X`
+  - Indices / futures: `^GSPC`, `^IXIC`, `ES=F`
+  - Previously any symbol containing `.`, `-`, `^`, or `=` was silently discarded before fetching.
+- **Currency-aware price labels** - Legend and tooltips now render prices with the correct currency symbol from Yahoo metadata (e.g. `CA$` for `TEC.TO`, `€` for German listings) instead of a hardcoded `$`.
+
+### Fixed
+- **All-null price series guard** - `firstClose` uses loose null comparison so a fully-empty series returns `null` percent-change instead of `NaN` (`.find` returns `undefined`, not `null`, when no non-null value exists).
+
+### Notes / Known limitations
+- Daily comparison across different timezones (e.g. a US ticker vs. a European `.DE` listing) can still show few or no points, because the chart intersects exact timestamps and daily bars are stamped at each exchange's local open. US/Canada (both Eastern) align correctly.
+
 ## [1.3.0] - 2026-04-16
 
 ### Fixed

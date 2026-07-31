@@ -160,9 +160,10 @@ class DataFetcher {
         const low = quote.low;
 
         // Calculate percentage change from first close
+        // `.find` returns undefined (not null) when every value is null, so use loose `== null`.
         const firstClose = close.find(c => c !== null);
         const percentChange = close.map(c => {
-            if (c === null || firstClose === null) return null;
+            if (c == null || firstClose == null) return null;
             return ((c - firstClose) / firstClose) * 100;
         });
 
