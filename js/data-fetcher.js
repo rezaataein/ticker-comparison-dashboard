@@ -3,11 +3,145 @@
  * Fetches historical OHLCV data for stock tickers
  */
 
+/** The data service could not be reached: proxy down, network error, or rate limit. */
+class DataServiceError extends Error {
+    constructor(message, attempts) {
+        super(message);
+        this.name = 'DataServiceError';
+        this.attempts = attempts || [];
+    }
+}
+
+/** Yahoo answered, but it does not know this symbol. The ticker really is wrong. */
+class TickerNotFoundError extends Error {
+    constructor(ticker, description) {
+        super(description || `Unknown symbol: ${ticker}`);
+        this.name = 'TickerNotFoundError';
+        this.ticker = ticker;
+    }
+}
+
 class DataFetcher {
     constructor() {
-        // Using CORS proxy to avoid browser restrictions
-        this.corsProxy = 'https://corsproxy.io/?';
+        // Yahoo Finance sends no CORS headers, so the browser cannot call it
+        // directly and every request must go through a proxy.
+        //
+        // Public proxies disappear without warning: corsproxy.io began to
+        // require an API key and returned 403 for every request, which stopped
+        // the whole dashboard. So do not depend on one proxy. Try each in turn
+        // and keep the first that answers.
+        //
+        // To use your own proxy (most reliable - see README), put it first:
+        //   { name: 'my-worker',
+        //     url: u => `https://NAME.workers.dev/?url=${encodeURIComponent(u)}`,
+        //     unwrap: null }
+        this.corsProxies = [
+            {
+                // Puts the body in {"contents": "...", "status": {...}}.
+                name: 'allorigins-get',
+                url: u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+                unwrap: body => JSON.parse(body).contents
+            },
+            {
+                name: 'allorigins-raw',
+                url: u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+                unwrap: null
+            },
+            {
+                name: 'codetabs',
+                url: u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+                unwrap: null
+            },
+            {
+                // Returns the body unchanged when asked for text.
+                name: 'jina',
+                url: u => `https://r.jina.ai/${u}`,
+                headers: { 'x-respond-with': 'text' },
+                unwrap: null
+            }
+        ];
         this.baseUrl = 'https://query2.finance.yahoo.com/v8/finance/chart/';
+
+        // Deadline for one proxy attempt. Keep it well below the patience of a
+        // person watching a chart, because the chain may try every proxy.
+        this.proxyTimeoutMs = 12000;
+    }
+
+    /**
+     * Fetch a Yahoo URL through the proxy chain.
+     *
+     * Yahoo reports an unknown symbol in the body (chart.error) together with
+     * HTTP 404, so read the body before you judge the status code. If the body
+     * is valid Yahoo JSON, trust it and stop: a bad ticker must not look like a
+     * dead proxy, and it must not try every remaining proxy.
+     *
+     * @param {string} targetUrl - Full Yahoo Finance URL
+     * @param {string} ticker - Symbol, for error messages
+     * @returns {Promise<Object>} - Parsed Yahoo response
+     */
+    async fetchThroughProxies(targetUrl, ticker) {
+        const attempts = [];
+
+        for (const proxy of this.corsProxies) {
+            let body;
+            let status;
+
+            // A proxy that hangs must not stall the whole dashboard, so give
+            // each one a deadline and move on to the next when it passes.
+            const abort = new AbortController();
+            const timer = setTimeout(() => abort.abort(), this.proxyTimeoutMs);
+
+            try {
+                const response = await fetch(proxy.url(targetUrl), {
+                    headers: proxy.headers || {},
+                    signal: abort.signal
+                });
+                status = response.status;
+                body = await response.text();
+
+                if (proxy.unwrap) {
+                    body = proxy.unwrap(body);
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    attempts.push(`${proxy.name}: timed out after ${this.proxyTimeoutMs} ms`);
+                    continue;
+                }
+                // Network failure, CORS rejection, or a malformed proxy envelope.
+                attempts.push(`${proxy.name}: ${error.message}`);
+                continue;
+            } finally {
+                clearTimeout(timer);
+            }
+
+            if (body == null || body === '') {
+                attempts.push(`${proxy.name}: HTTP ${status}, empty body`);
+                continue;
+            }
+
+            let data;
+            try {
+                data = JSON.parse(body);
+            } catch (error) {
+                attempts.push(`${proxy.name}: HTTP ${status}, not JSON`);
+                continue;
+            }
+
+            // Yahoo answered in full. Its verdict on this ticker is final.
+            if (data && data.chart && data.chart.error) {
+                throw new TickerNotFoundError(ticker, data.chart.error.description);
+            }
+            if (data && data.chart && data.chart.result && data.chart.result.length > 0) {
+                return data;
+            }
+
+            attempts.push(`${proxy.name}: HTTP ${status}, unexpected shape`);
+        }
+
+        throw new DataServiceError(
+            `Could not reach the price data service. Tried: ${attempts.join('; ')}`,
+            attempts
+        );
     }
 
     /**
@@ -119,19 +253,24 @@ class DataFetcher {
             const isIntraday = ['1m', '5m', '15m', '30m', '60m'].includes(selectedInterval);
             const includePrePost = isIntraday ? '&includePrePost=true' : '';
 
-            const yahooUrl = `${this.baseUrl}${ticker}?period1=${period1}&period2=${period2}&interval=${selectedInterval}${includePrePost}`;
-            const url = `${this.corsProxy}${encodeURIComponent(yahooUrl)}`;
+            const buildUrl = symbol =>
+                `${this.baseUrl}${encodeURIComponent(symbol)}` +
+                `?period1=${period1}&period2=${period2}` +
+                `&interval=${selectedInterval}${includePrePost}`;
 
-            const response = await fetch(url);
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
-                throw new Error(`No data returned`);
+            let data;
+            try {
+                data = await this.fetchThroughProxies(buildUrl(ticker), ticker);
+            } catch (error) {
+                // Yahoo writes share classes with a dash (BRK-B), but people type
+                // a dot (BRK.B). A dot is also an exchange suffix (TEC.TO), so we
+                // cannot tell the two apart up front. Only after Yahoo rejects the
+                // symbol do we retry the dash form.
+                const dashed = ticker.replace(/\./g, '-');
+                if (!(error instanceof TickerNotFoundError) || dashed === ticker) {
+                    throw error;
+                }
+                data = await this.fetchThroughProxies(buildUrl(dashed), ticker);
             }
 
             const parsedData = this.parseYahooData(ticker, data.chart.result[0]);
@@ -211,6 +350,11 @@ class DataFetcher {
                 } else {
                     failures.push({
                         ticker: tickers[index],
+                        // 'not-found' means the symbol is wrong. 'service' means the
+                        // symbol may be good but we could not reach the data.
+                        kind: result.reason instanceof TickerNotFoundError
+                            ? 'not-found'
+                            : 'service',
                         error: result.reason.message
                     });
                 }
