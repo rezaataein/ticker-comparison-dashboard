@@ -181,7 +181,9 @@ startDate.setMonth(startDate.getMonth() - 3);  // Default: last 3 months
 | Issue | Solution |
 |-------|----------|
 | CORS errors / chart not loading | Use local server instead of opening file directly |
+| "Could not reach the price data service" | A public CORS proxy is down. Wait and retry. To make this permanent, add your own proxy first in `corsProxies` (see CORS Proxies below) |
 | Ticker not found | Verify symbol is correct (use Yahoo Finance symbols) |
+| Class shares (BRK.B) | Type either `BRK.B` or `BRK-B`. Yahoo uses the dash form, and the dashboard retries with it automatically |
 | No data returned | Check date range doesn't span only weekends/holidays |
 | Interval disabled | Date range exceeds interval limit (see Interval Limits table) |
 
@@ -215,7 +217,53 @@ See [LICENSE](LICENSE) for details.
 
 - Market data provided by [Yahoo Finance](https://finance.yahoo.com)
 - Charts powered by [Plotly.js](https://plotly.com/javascript/)
-- CORS proxy by [corsproxy.io](https://corsproxy.io)
+- CORS proxies by [AllOrigins](https://allorigins.win), [CodeTabs](https://codetabs.com), and [Jina AI](https://jina.ai)
+
+## 🔀 CORS Proxies
+
+Yahoo Finance sends no CORS headers, so the browser cannot call it directly.
+Every request must pass through a proxy.
+
+Public proxies are free but not dependable. In August 2026 `corsproxy.io` began
+to require an API key, returned HTTP 403 for every request, and stopped the
+dashboard completely. So the dashboard now holds a list of proxies in
+`corsProxies` in `js/data-fetcher.js`. It tries each one in turn and keeps the
+first that answers. Each attempt has a 12-second deadline.
+
+**For dependable service, use your own proxy.** A Cloudflare Worker on the free
+plan gives 100,000 requests each day. Deploy this Worker:
+
+```js
+export default {
+  async fetch(request) {
+    const target = new URL(request.url).searchParams.get('url');
+    if (!target) return new Response('Missing url parameter', { status: 400 });
+    const upstream = await fetch(target, {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: {
+        'Content-Type': upstream.headers.get('Content-Type') || 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+};
+```
+
+Then put it first in the `corsProxies` list:
+
+```js
+{
+    name: 'my-worker',
+    url: u => `https://NAME.workers.dev/?url=${encodeURIComponent(u)}`,
+    unwrap: null
+}
+```
+
+To check the chain at any time, run `node test-fetcher.mjs`. It needs network
+access.
 
 ## 📞 Support
 

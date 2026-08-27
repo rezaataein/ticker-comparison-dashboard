@@ -229,7 +229,24 @@ class TickerDashboard {
             );
 
             if (result.successful.length === 0) {
-                this.showError('Failed to load data for any ticker. Check symbols and try again.');
+                // Do not blame the symbol unless Yahoo actually rejected it.
+                // A dead CORS proxy used to report every ticker as wrong.
+                const badSymbols = result.failures
+                    .filter(f => f.kind === 'not-found')
+                    .map(f => f.ticker);
+
+                if (badSymbols.length > 0 && badSymbols.length === result.failures.length) {
+                    this.showError(
+                        `Yahoo Finance does not know: ${badSymbols.join(', ')}. ` +
+                        `Check the symbol and the exchange suffix (for example TEC.TO for Toronto).`
+                    );
+                } else {
+                    this.showError(
+                        'Could not reach the price data service, so no data was loaded. ' +
+                        'This is a problem with the data proxy, not with your symbols. ' +
+                        'Please try again in a moment. See the browser console for details.'
+                    );
+                }
                 return;
             }
 
@@ -242,7 +259,15 @@ class TickerDashboard {
             message += `\n📊 Interval: ${intervalDesc}`;
 
             if (result.failures.length > 0) {
-                message += `\n⚠️ Failed: ${result.failures.map(f => f.ticker).join(', ')}`;
+                const notFound = result.failures.filter(f => f.kind === 'not-found');
+                const unreachable = result.failures.filter(f => f.kind !== 'not-found');
+
+                if (notFound.length > 0) {
+                    message += `\n⚠️ Unknown symbol: ${notFound.map(f => f.ticker).join(', ')}`;
+                }
+                if (unreachable.length > 0) {
+                    message += `\n⚠️ Data service unreachable for: ${unreachable.map(f => f.ticker).join(', ')}`;
+                }
             }
 
             this.showSuccess(message);

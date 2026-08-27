@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-08-27
+
+### Fixed
+
+- **The dashboard showed no data at all.** `corsproxy.io` stopped its support for
+  anonymous keyless URLs and returned HTTP 403 (`keyless_legacy_url`) for every
+  request. Each ticker failed, and the dashboard reported "Failed to load data
+  for any ticker. Check symbols and try again." The symbols were always correct;
+  the proxy was dead.
+- The error message no longer blames the symbol for a network fault. It says a
+  symbol is wrong only when Yahoo Finance says so.
+- Class-share symbols written with a dot (`BRK.B`) now load. Yahoo Finance uses
+  a dash (`BRK-B`). Version 1.4.0 accepted `BRK.B` in the input box but always
+  failed to fetch it.
+
+### Added
+
+- A chain of CORS proxies (allorigins-get, allorigins-raw, codetabs, jina).
+  The dashboard tries each one in turn and keeps the first that answers, so one
+  dead proxy no longer stops the whole dashboard. Put your own proxy first in
+  `corsProxies` in `js/data-fetcher.js` for the best reliability.
+- A 12-second deadline for each proxy. Before, a proxy that hung could stall the
+  dashboard with no limit.
+- `TickerNotFoundError` and `DataServiceError`, so the code can tell a wrong
+  symbol apart from an unreachable service. Failures now carry a `kind` field
+  (`not-found` or `service`).
+- `test-fetcher.mjs`, an integration check for the proxy chain. Run it with
+  `node test-fetcher.mjs`. It needs network access.
+
 ## [1.4.0] - 2026-07-31
 
 ### Added
