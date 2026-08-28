@@ -227,8 +227,16 @@ Every request must pass through a proxy.
 Public proxies are free but not dependable. In August 2026 `corsproxy.io` began
 to require an API key, returned HTTP 403 for every request, and stopped the
 dashboard completely. So the dashboard now holds a list of proxies in
-`corsProxies` in `js/data-fetcher.js`. It tries each one in turn and keeps the
-first that answers. Each attempt has a 12-second deadline.
+`corsProxies` in `js/data-fetcher.js`.
+
+The dashboard **races** these proxies. It starts the first one, and if that stays
+quiet for 1200 ms it starts the next one as well, and so on. The first good
+answer wins and cancels the rest. Each attempt has an 8-second deadline. A slow
+or dead proxy therefore costs the 1200 ms stagger, not its whole timeout.
+
+**Order the list by speed, fastest first.** Run `node bench.mjs` to measure them.
+A wrong order is expensive: v1.5.0 put the slowest working proxy first and made
+every ticker take about 3.4 seconds instead of about 0.5 seconds.
 
 **For dependable service, use your own proxy.** A Cloudflare Worker on the free
 plan gives 100,000 requests each day. Deploy this Worker:

@@ -28,19 +28,26 @@ class DataFetcher {
         //
         // Public proxies disappear without warning: corsproxy.io began to
         // require an API key and returned 403 for every request, which stopped
-        // the whole dashboard. So do not depend on one proxy. Try each in turn
-        // and keep the first that answers.
+        // the whole dashboard. So do not depend on one proxy. fetchThroughProxies
+        // races these with a short stagger and keeps the first good answer.
         //
         // To use your own proxy (most reliable - see README), put it first:
         //   { name: 'my-worker',
         //     url: u => `https://NAME.workers.dev/?url=${encodeURIComponent(u)}`,
         //     unwrap: null }
+        // Order matters: fastest first. Measured with bench.mjs, 4 tickers each:
+        //   jina            529 ms avg   4/4 ok
+        //   allorigins-raw 2622 ms avg   4/4 ok
+        //   allorigins-get 3405 ms avg   4/4 ok
+        //   codetabs         --          0/4 ok (every call timed out)
+        // Re-run `node bench.mjs` and reorder when these numbers drift.
         this.corsProxies = [
             {
-                // Puts the body in {"contents": "...", "status": {...}}.
-                name: 'allorigins-get',
-                url: u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-                unwrap: body => JSON.parse(body).contents
+                // Returns the body unchanged when asked for text.
+                name: 'jina',
+                url: u => `https://r.jina.ai/${u}`,
+                headers: { 'x-respond-with': 'text' },
+                unwrap: null
             },
             {
                 name: 'allorigins-raw',
@@ -48,100 +55,141 @@ class DataFetcher {
                 unwrap: null
             },
             {
-                name: 'codetabs',
-                url: u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-                unwrap: null
+                // Puts the body in {"contents": "...", "status": {...}}.
+                name: 'allorigins-get',
+                url: u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+                unwrap: body => JSON.parse(body).contents
             },
             {
-                // Returns the body unchanged when asked for text.
-                name: 'jina',
-                url: u => `https://r.jina.ai/${u}`,
-                headers: { 'x-respond-with': 'text' },
+                // Unhealthy at the time of writing. Kept as a last resort: with
+                // hedging it costs no time unless every proxy above it fails.
+                name: 'codetabs',
+                url: u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
                 unwrap: null
             }
         ];
         this.baseUrl = 'https://query2.finance.yahoo.com/v8/finance/chart/';
 
-        // Deadline for one proxy attempt. Keep it well below the patience of a
-        // person watching a chart, because the chain may try every proxy.
-        this.proxyTimeoutMs = 12000;
+        // Hard deadline for one proxy attempt.
+        this.proxyTimeoutMs = 8000;
+
+        // How long to wait for the current proxy before we also start the next
+        // one. Requests overlap, so a slow or dead proxy costs this much delay
+        // instead of its whole timeout. Keep it above the normal response time
+        // of the fastest proxy, or every call needlessly doubles its requests.
+        this.hedgeDelayMs = 1200;
     }
 
     /**
-     * Fetch a Yahoo URL through the proxy chain.
+     * Fetch a Yahoo URL through the proxy chain, and take the first good answer.
+     *
+     * The proxies are hedged, not tried one after another. We start the first
+     * proxy, and if it stays quiet for hedgeDelayMs we start the next one as
+     * well, and so on. The first usable answer wins and cancels the rest.
+     * A strictly sequential chain made every request wait out the proxy in
+     * front of it, which made the whole dashboard several times slower.
      *
      * Yahoo reports an unknown symbol in the body (chart.error) together with
      * HTTP 404, so read the body before you judge the status code. If the body
-     * is valid Yahoo JSON, trust it and stop: a bad ticker must not look like a
-     * dead proxy, and it must not try every remaining proxy.
+     * is valid Yahoo JSON, trust it and stop the race: a bad ticker must not
+     * look like a dead proxy.
      *
      * @param {string} targetUrl - Full Yahoo Finance URL
      * @param {string} ticker - Symbol, for error messages
      * @returns {Promise<Object>} - Parsed Yahoo response
      */
-    async fetchThroughProxies(targetUrl, ticker) {
-        const attempts = [];
+    fetchThroughProxies(targetUrl, ticker) {
+        return new Promise((resolve, reject) => {
+            const attempts = [];
+            const controllers = [];
+            let started = 0;
+            let ended = 0;
+            let done = false;
+            let hedgeTimer = null;
 
-        for (const proxy of this.corsProxies) {
-            let body;
-            let status;
-
-            // A proxy that hangs must not stall the whole dashboard, so give
-            // each one a deadline and move on to the next when it passes.
-            const abort = new AbortController();
-            const timer = setTimeout(() => abort.abort(), this.proxyTimeoutMs);
-
-            try {
-                const response = await fetch(proxy.url(targetUrl), {
-                    headers: proxy.headers || {},
-                    signal: abort.signal
-                });
-                status = response.status;
-                body = await response.text();
-
-                if (proxy.unwrap) {
-                    body = proxy.unwrap(body);
+            // The first usable answer wins. Cancel every request still open,
+            // so a slow proxy never holds the chart back once we have data.
+            const settle = (finish, value) => {
+                if (done) return;
+                done = true;
+                clearTimeout(hedgeTimer);
+                for (const controller of controllers) {
+                    try { controller.abort(); } catch (ignored) { /* already gone */ }
                 }
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    attempts.push(`${proxy.name}: timed out after ${this.proxyTimeoutMs} ms`);
-                    continue;
+                finish(value);
+            };
+
+            const startNext = () => {
+                if (done || started >= this.corsProxies.length) return;
+                const proxy = this.corsProxies[started++];
+                attempt(proxy);
+
+                // Overlap with the next proxy rather than wait out this one.
+                if (started < this.corsProxies.length) {
+                    clearTimeout(hedgeTimer);
+                    hedgeTimer = setTimeout(startNext, this.hedgeDelayMs);
                 }
-                // Network failure, CORS rejection, or a malformed proxy envelope.
-                attempts.push(`${proxy.name}: ${error.message}`);
-                continue;
-            } finally {
-                clearTimeout(timer);
-            }
+            };
 
-            if (body == null || body === '') {
-                attempts.push(`${proxy.name}: HTTP ${status}, empty body`);
-                continue;
-            }
+            const attempt = async (proxy) => {
+                const abort = new AbortController();
+                controllers.push(abort);
+                const timer = setTimeout(() => abort.abort(), this.proxyTimeoutMs);
 
-            let data;
-            try {
-                data = JSON.parse(body);
-            } catch (error) {
-                attempts.push(`${proxy.name}: HTTP ${status}, not JSON`);
-                continue;
-            }
+                try {
+                    const response = await fetch(proxy.url(targetUrl), {
+                        headers: proxy.headers || {},
+                        signal: abort.signal
+                    });
+                    const status = response.status;
+                    let body = await response.text();
 
-            // Yahoo answered in full. Its verdict on this ticker is final.
-            if (data && data.chart && data.chart.error) {
-                throw new TickerNotFoundError(ticker, data.chart.error.description);
-            }
-            if (data && data.chart && data.chart.result && data.chart.result.length > 0) {
-                return data;
-            }
+                    if (proxy.unwrap) {
+                        body = proxy.unwrap(body);
+                    }
+                    if (body == null || body === '') {
+                        attempts.push(`${proxy.name}: HTTP ${status}, empty body`);
+                    } else {
+                        const data = JSON.parse(body);
 
-            attempts.push(`${proxy.name}: HTTP ${status}, unexpected shape`);
-        }
+                        // Yahoo answered in full. Its verdict is final, so stop
+                        // the whole race instead of asking the other proxies.
+                        if (data && data.chart && data.chart.error) {
+                            settle(reject, new TickerNotFoundError(ticker, data.chart.error.description));
+                            return;
+                        }
+                        if (data && data.chart && data.chart.result && data.chart.result.length > 0) {
+                            settle(resolve, data);
+                            return;
+                        }
+                        attempts.push(`${proxy.name}: HTTP ${status}, unexpected shape`);
+                    }
+                } catch (error) {
+                    // A cancelled request is expected once another proxy wins.
+                    if (!done) {
+                        attempts.push(`${proxy.name}: ${error.name === 'AbortError'
+                            ? `timed out after ${this.proxyTimeoutMs} ms`
+                            : error.message}`);
+                    }
+                } finally {
+                    clearTimeout(timer);
+                }
 
-        throw new DataServiceError(
-            `Could not reach the price data service. Tried: ${attempts.join('; ')}`,
-            attempts
-        );
+                // This proxy failed. Promote the next one now, without waiting
+                // out the rest of the hedge delay.
+                ended++;
+                if (ended === this.corsProxies.length) {
+                    settle(reject, new DataServiceError(
+                        `Could not reach the price data service. Tried: ${attempts.join('; ')}`,
+                        attempts
+                    ));
+                } else {
+                    startNext();
+                }
+            };
+
+            startNext();
+        });
     }
 
     /**

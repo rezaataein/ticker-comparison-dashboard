@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-08-27
+
+### Fixed
+
+- **The dashboard became several times slower in 1.5.0.** That release put the
+  proxies in the wrong order and tried them one after another. Measured latency
+  for one ticker, 4 samples each:
+
+  | proxy | success | average |
+  |---|---|---|
+  | jina | 4/4 | 529 ms |
+  | allorigins-raw | 4/4 | 2622 ms |
+  | allorigins-get | 4/4 | 3405 ms |
+  | codetabs | 0/4 | every call timed out |
+
+  Version 1.5.0 put `allorigins-get` first, which is the slowest proxy that
+  works, and `jina` last, which is the fastest. `allorigins-get` answered every
+  time, so the dashboard never reached the quick proxy and paid about 3.4
+  seconds for each ticker. The order came from a short allorigins outage during
+  development, not from measurement.
+
+### Changed
+
+- The proxies now race with a short stagger instead of a strict queue. The
+  dashboard starts the first proxy, starts the next if the first stays quiet
+  for 1200 ms, and keeps the first good answer. A slow or dead proxy now costs
+  the stagger delay, not its whole timeout.
+- Proxy order is now by measured speed: jina, allorigins-raw, allorigins-get,
+  codetabs. `codetabs` stays last as a fallback although it is unhealthy,
+  because the race gives it no cost unless everything above it fails.
+- The deadline for one proxy is 8000 ms, down from 12000 ms.
+
+### Added
+
+- `bench.mjs`, a latency benchmark for the proxies. Run `node bench.mjs` and
+  reorder `corsProxies` when the numbers drift.
+- A speed test in `test-fetcher.mjs` that fails if 4 tickers take longer than
+  6 seconds together.
+
+### Result
+
+One ticker now loads in about 420-570 ms, and 4 tickers together in about
+510 ms. Before this fix each ticker cost about 3400 ms.
+
 ## [1.5.0] - 2026-08-27
 
 ### Fixed

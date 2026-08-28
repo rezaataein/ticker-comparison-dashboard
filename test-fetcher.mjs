@@ -29,19 +29,36 @@ let pass = 0, fail = 0;
 const ok = (name, msg) => { console.log(`  PASS  ${name}${msg ? ' :: ' + msg : ''}`); pass++; };
 const no = (name, msg) => { console.log(`  FAIL  ${name} :: ${msg}`); fail++; };
 
+const timings = [];
+
 async function expectData(name, ticker, wantCurrency) {
     const f = new DataFetcher();
+    const t0 = Date.now();
     try {
         const d = await f.fetchTickerData(ticker, start, end, '1d');
+        const ms = Date.now() - t0;
+        timings.push(ms);
         const pts = d.close.filter(c => c !== null).length;
         if (pts === 0) return no(name, 'no non-null closes');
         if (wantCurrency && d.metadata.currency !== wantCurrency) {
             return no(name, `currency ${d.metadata.currency} != ${wantCurrency}`);
         }
-        ok(name, `${d.metadata.symbol} ${d.metadata.currency} pts=${pts} ticker-label=${d.ticker}`);
+        ok(name, `${d.metadata.symbol} ${d.metadata.currency} pts=${pts} ${ms} ms`);
     } catch (e) {
         no(name, `${e.name}: ${e.message.slice(0, 110)}`);
     }
+}
+
+async function expectParallelSpeed(name, tickers, budgetMs) {
+    const f = new DataFetcher();
+    const t0 = Date.now();
+    const r = await f.fetchMultipleTickers(tickers, start, end, '1d');
+    const ms = Date.now() - t0;
+    if (r.successful.length !== tickers.length) {
+        return no(name, `only ${r.successful.length}/${tickers.length} loaded in ${ms} ms`);
+    }
+    if (ms > budgetMs) return no(name, `${tickers.length} tickers took ${ms} ms, budget ${budgetMs} ms`);
+    ok(name, `${tickers.length} tickers in ${ms} ms (budget ${budgetMs} ms)`);
 }
 
 async function expectNotFound(name, ticker) {
@@ -107,6 +124,11 @@ await expectNotFound('invalid symbol -> TickerNotFoundError', 'NOTAREALTICKERXYZ
 await expectServiceError('all proxies dead -> DataServiceError');
 await expectFailoverWorks('dead first proxy -> fails over');
 await expectKinds('failure kinds are tagged');
+await expectParallelSpeed('4 tickers load well under budget', ['AAPL', 'MSFT', 'GOOG', 'TEC.TO'], 6000);
 
+if (timings.length) {
+    const avg = Math.round(timings.reduce((a, b) => a + b, 0) / timings.length);
+    console.log(`\n  single-ticker latency: avg ${avg} ms, max ${Math.max(...timings)} ms`);
+}
 console.log(`\n  ${pass} passed, ${fail} failed\n`);
 process.exit(fail === 0 ? 0 : 1);
